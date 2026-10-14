@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SIM Rimba Selatan</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%231c3a29%22/%3E%3Crect x=%223%22 y=%223%22 width=%224%22 height=%224%22 fill=%22%236fae4c%22/%3E%3Crect x=%229%22 y=%223%22 width=%224%22 height=%224%22 fill=%22%233aa39e%22/%3E%3Crect x=%223%22 y=%229%22 width=%224%22 height=%224%22 fill=%22%23e08a45%22/%3E%3Crect x=%229%22 y=%229%22 width=%224%22 height=%224%22 fill=%22%236fae4c%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="gaya.css">
+<style>
+.loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:3000;font-family:var(--f-display);font-size:1.2rem;color:var(--muted)}
+.userchip{display:flex;align-items:center;gap:10px;font-size:.85rem}
+.userchip b{display:block;color:var(--brand-ink)}
+.userchip span{color:var(--brand-muted);font-size:.78rem}
+.btn.ghost{background:transparent;color:var(--brand-ink);border-color:rgba(255,255,255,.25)}
+.btn.ghost:hover{background:var(--brand-2)}
+nav.side a.navlink{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:var(--r);color:var(--ink);text-decoration:none;border-left:3px solid transparent;white-space:nowrap}
+nav.side a.navlink:hover{background:var(--surface-2)}
+nav.side a.navlink svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:var(--muted)}
+.lap-pop img{max-width:220px;border-radius:6px;display:block;margin-top:6px}
+.panel.grow .chartbox{max-height:460px}
+#alerts{max-height:520px;overflow:auto}
+.impact{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.impact div{background:var(--surface-2);border-radius:var(--r);padding:10px 12px}
+.impact b{font-family:var(--f-display);font-size:1.5rem;display:block}
+.toggle{display:flex;gap:8px;align-items:center;font-size:.9rem}
+@media (max-width:760px){.userchip span{display:none}.impact{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+</head><body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span><b>SIM Rimba Selatan</b><small>Perencanaan &amp; Ketelusuran Hutan Tanaman · PT Rimba Selatan Lestari (fiktif)</small></span></div>
+    <span class="spacer"></span>
+    <span class="asof" id="asof"><b>RKT 2026</b> · basis data bersama</span>
+    <div class="userchip"><div><b id="u-nama">…</b><span id="u-peran"></span></div><button class="btn sm ghost" id="logout" type="button">Keluar</button></div>
+  </header>
+
+  <nav class="side" id="nav" aria-label="Menu">
+    <div class="who" id="who"></div>
+    <button data-page="ringkasan"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Ringkasan</button>
+    <button data-page="tugas"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Tugas Lapangan <span class="cnt" id="cnt-tugas"></span></button>
+    <button data-page="peta"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Peta Kerja</button>
+    <span class="lbl">Perencanaan</span>
+    <button data-page="daur"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>Daur &amp; Etat</button>
+    <button data-page="rkt"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 14h4M7 17h7"/></svg>Rencana Kerja (RKT)</button>
+    <span class="lbl">Produksi</span>
+    <button data-page="telusur"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.3 7.2l7.4 3.6M8.3 16.8l7.4-3.6"/></svg>Ketelusuran Kayu</button>
+    <span class="lbl">Lainnya</span>
+    <a class="navlink" href="lapangan.html" id="nav-lapangan"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-11a6 6 0 0112 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Input Lapangan (HP)</a>
+    <a class="navlink" href="laporan.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>Laporan Cetak</a>
+    <div class="foot"><b style="color:var(--ink)">Dibuat oleh M. Rizwan Fazeri</b><br>NIM 2410611210086 · Perencanaan Hutan A2<br><br>Data tersimpan di basis data PostGIS bersama dan tersambung ke QGIS.<br><button id="reload" type="button">Muat ulang data</button></div>
+  </nav>
+
+  <main>
+    <!-- RINGKASAN -->
+    <section class="page" id="p-ringkasan" hidden>
+      <div class="phead"><div><div class="eyebrow" id="ring-eyebrow">Dashboard strategis</div><h2>Ringkasan pengelolaan 2026</h2>
+        <p>Posisi produksi, penanaman kembali, dan kepatuhan terhadap etat untuk 10.000 ha areal PBPH hutan tanaman.</p></div></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid g-main">
+        <div class="panel grow"><h3>Produksi kayu kumulatif 2026 <small>m³ hasil ukur (LHP) vs target RKT</small></h3><div class="chartbox"><canvas id="ch-prod"></canvas></div></div>
+        <div class="panel"><h3>Perlu tindakan <small id="alert-count"></small></h3><ul class="alerts" id="alerts"></ul></div>
+      </div>
+      <div class="grid g2">
+        <div class="panel"><h3>Capaian RKT 2026 <small>luas realisasi vs target</small></h3><div id="prog-ring"></div></div>
+        <div class="panel"><h3>Ringkasan per blok</h3><div class="tw"><table id="tbl-blok" class="nowrap"></table></div></div>
+      </div>
+    </section>
+
+    <!-- TUGAS -->
+    <section class="page" id="p-tugas" hidden>
+      <div class="phead"><div><div class="eyebrow">Level operasional</div><h2>Tugas lapangan</h2>
+        <p>Petak yang masuk RKT 2026 dan belum dikerjakan. Tekan "Selesai" setelah kegiatan di petak tuntas; catatan langsung masuk ke realisasi RKT.</p></div>
+        <div class="field" style="min-width:200px"><label for="petugas">Nama petugas</label><input id="petugas" value="Rahmat H."></div></div>
+      <p class="msg" id="msg-tugas"></p>
+      <div class="tasks">
+        <div class="panel"><h3>Tebang <small id="tc-tebang"></small></h3><div id="t-tebang"></div></div>
+        <div class="panel"><h3>Tanam kembali <small id="tc-tanam"></small></h3><div id="t-tanam"></div></div>
+        <div class="panel"><h3>Pemeliharaan <small id="tc-pelihara"></small></h3><div id="t-pelihara"></div></div>
+      </div>
+    </section>
+
+    <!-- PETA -->
+    <section class="page" id="p-peta" hidden>
+      <div class="phead"><div><div class="eyebrow">200 petak · 5 blok · 10.000 ha</div><h2>Peta kerja</h2>
+        <p>Arahkan kursor ke petak untuk info singkat, klik untuk detail dan riwayat kegiatan.</p></div>
+        <div class="toolbar">
+          <div class="field"><label for="fblok">Blok</label><select id="fblok"><option value="">Semua blok</option><option value="A">Blok A</option><option value="B">Blok B</option><option value="C">Blok C</option><option value="D">Blok D</option><option value="E">Blok E</option></select></div>
+          <div class="field"><label for="cari">Cari petak</label><input id="cari" placeholder="mis. A07" list="dl-petak" style="width:110px"></div>
+        </div></div>
+      <div class="mapbar">
+        <div class="seg" id="modes" role="group" aria-label="Tampilan peta">
+          <button type="button" data-mode="status" aria-pressed="true">Status kerja</button>
+          <button type="button" data-mode="jenis" aria-pressed="false">Jenis</button>
+          <button type="button" data-mode="ku" aria-pressed="false">Kelas umur</button>
+          <button type="button" data-mode="eudr" aria-pressed="false">EUDR</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn sm" id="ge-all" target="_blank" rel="noopener">Buka areal di Google Earth</a>
+          <button class="btn sm" id="btn-geojson" type="button">Salin GeoJSON</button>
+        </div>
+      </div>
+      <input type="hidden" id="mode" value="status">
+      <div class="mapstage">
+        <div id="map" role="region" aria-label="Peta petak"></div>
+        <div class="mapfloat mapinfo" id="mapinfo" hidden></div>
+        <div class="mapfloat maplegend"><h4 id="legend-title">Status kerja</h4><div class="legend" id="legend"></div></div>
+        <div class="mapfloat basemap withdrawer" id="basemap"></div>
+        <aside class="mapfloat drawer detail" id="detail"></aside>
+      </div>
+      <div id="geo-out" hidden><p class="note">Penyalinan otomatis tidak diizinkan di tampilan ini. Pilih semua teks di bawah lalu salin, kemudian simpan sebagai .geojson untuk dibuka di QGIS.</p><textarea class="copyarea" id="geo-text" readonly></textarea></div>
+    </section>
+
+    <!-- DAUR -->
+    <section class="page" id="p-daur" hidden>
+      <div class="phead"><div><div class="eyebrow">Sistem silvikultur THPB</div><h2>Perencanaan daur dan etat</h2>
+        <p>Ubah daur, riap, atau faktor koreksi; etat, status petak, peta, dan jadwal tebang 10 tahun dihitung ulang seketika.</p></div></div>
+      <div class="panel">
+        <h3>Parameter jenis tanaman pokok <small id="param-note"></small></h3>
+        <form class="params" id="params" onsubmit="return false"></form>
+        <div class="formula" style="margin-top:12px">Etat luas = Σ luas efektif ÷ daur &nbsp;·&nbsp; Volume/ha saat daur = MAI × daur × f<sub>k</sub> &nbsp;·&nbsp; Etat volume = etat luas × volume/ha</div>
+      </div>
+      <div class="panel"><h3>Dampak tata hutan (analisis DEM di QGIS) <small>kriteria Keppres 32/1990: lereng ≥ 40%, sempadan sungai 50/100 m</small></h3>
+        <div class="impact" id="impact"></div>
+        <label class="toggle" style="margin-top:12px"><input type="checkbox" id="pakai-ef"> Hitung etat dan volume memakai <b>luas efektif</b> (luas petak dikurangi kawasan lindung)</label></div>
+      <div class="panel"><h3>Etat tahunan</h3><div class="tw"><table id="tbl-etat" class="nowrap"></table></div></div>
+      <div class="grid g2">
+        <div class="panel"><h3>Kelas umur akasia <small>luas (ha) vs hutan normal</small></h3><div class="chartbox"><canvas id="ch-ku-AK"></canvas></div></div>
+        <div class="panel"><h3>Kelas umur eukaliptus <small>luas (ha) vs hutan normal</small></h3><div class="chartbox"><canvas id="ch-ku-EU"></canvas></div></div>
+      </div>
+      <div class="panel"><h3>Proyeksi volume tebang RKUPH 2026–2035 <small>m³ per tahun vs etat</small></h3><div class="chartbox tall"><canvas id="ch-jadwal"></canvas></div>
+        <p class="note">2026 memakai target RKT yang disahkan. Tahun berikutnya diproyeksikan dari tahun tanam setiap petak; petak yang belum ditanam diasumsikan ditanam tahun depan.</p></div>
+    </section>
+
+    <!-- RKT -->
+    <section class="page" id="p-rkt" hidden>
+      <div class="phead"><div><div class="eyebrow">Level taktis</div><h2>Rencana Kerja Tahunan 2026</h2>
+        <p>Target per kegiatan dan jenis dibandingkan dengan realisasi yang dicatat mandor.</p></div></div>
+      <div class="panel"><h3>Target vs realisasi</h3><div class="tw"><table id="tbl-rkt"></table></div></div>
+      <div class="grid g2">
+        <div class="panel"><h3>Catat realisasi kegiatan</h3>
+          <form class="f" id="f-real">
+            <div class="field"><label for="r-keg">Kegiatan</label><select id="r-keg"><option value="tebang">Tebang</option><option value="tanam">Tanam kembali</option><option value="pelihara">Pemeliharaan</option></select></div>
+            <div class="field"><label for="r-petak">Petak</label><select id="r-petak"></select></div>
+            <div class="field"><label for="r-tgl">Tanggal</label><input type="date" id="r-tgl" value="2026-10-14" min="2026-01-01" max="2026-12-31"></div>
+            <div class="field"><label for="r-petugas">Petugas</label><input id="r-petugas" value="Syahrani"></div>
+            <button class="btn primary" type="submit" id="r-submit">Simpan realisasi</button>
+          </form><p class="msg" id="msg-real"></p></div>
+        <div class="panel"><h3>Peringatan rencana</h3><ul class="alerts" id="alerts-rkt"></ul></div>
+      </div>
+      <div class="panel"><h3>Realisasi terbaru <small id="real-count"></small></h3><div class="tw"><table id="tbl-real" class="nowrap"></table></div></div>
+    </section>
+
+    <!-- TELUSUR -->
+    <section class="page" id="p-telusur" hidden>
+      <div class="phead"><div><div class="eyebrow">SVLK · EUDR</div><h2>Ketelusuran kayu</h2>
+        <p>Setiap dokumen angkutan menunjuk ke satu LHP, dan setiap LHP menunjuk ke satu petak. Masukkan nomor dokumen angkutan, nomor LHP, atau kode petak untuk melihat asal-usulnya.</p></div></div>
+      <div class="panel">
+        <form class="toolbar" id="f-trace"><div class="field" style="flex:1;min-width:220px"><label for="q">Nomor dokumen, LHP, atau petak</label><input id="q" list="dl-trace" placeholder="mis. SKSHHK-RSL-2026-0012"></div>
+          <button class="btn primary" type="submit">Telusuri</button></form>
+        <div id="trace-out" style="margin-top:14px"></div>
+      </div>
+      <div class="grid g2">
+        <div class="panel"><h3>Catat produksi (LHP)</h3>
+          <form class="f" id="f-prod">
+            <div class="field"><label for="pr-petak">Petak ditebang</label><select id="pr-petak"></select></div>
+            <div class="field"><label for="pr-no">No. LHP</label><input id="pr-no"></div>
+            <div class="field"><label for="pr-tgl">Tanggal</label><input type="date" id="pr-tgl" value="2026-10-14"></div>
+            <div class="field"><label for="pr-lhc">Taksiran LHC (m³)</label><input id="pr-lhc" readonly></div>
+            <div class="field"><label for="pr-vol">Volume ukur (m³)</label><input id="pr-vol" type="number" min="1" step="1"></div>
+            <button class="btn primary" type="submit">Simpan LHP</button>
+          </form><p class="msg" id="msg-prod"></p></div>
+        <div class="panel"><h3>Catat angkutan</h3>
+          <form class="f" id="f-angk">
+            <div class="field"><label for="an-prod">Dari LHP</label><select id="an-prod"></select></div>
+            <div class="field"><label for="an-no">No. dokumen</label><input id="an-no"></div>
+            <div class="field"><label for="an-tgl">Tanggal</label><input type="date" id="an-tgl" value="2026-10-14"></div>
+            <div class="field"><label for="an-vol">Volume (m³)</label><input id="an-vol" type="number" min="1" step="1"></div>
+            <div class="field"><label for="an-tuj">Tujuan</label><select id="an-tuj"><option>Mitra industri serat (fiktif)</option><option>Pembeli ekspor via pelabuhan (fiktif)</option></select></div>
+            <button class="btn primary" type="submit">Simpan angkutan</button>
+          </form><p class="msg" id="msg-angk"></p></div>
+      </div>
+      <div class="panel"><h3>Stok per LHP <small>volume ukur, sudah diangkut, sisa di TPK</small></h3><div class="tw"><table id="tbl-prod" class="nowrap"></table></div></div>
+      <div class="panel"><h3>Dokumen angkutan <small id="angk-count"></small></h3><div class="tw"><table id="tbl-angk" class="nowrap"></table></div></div>
+    </section>
+  </main>
+</div>
+<div class="loading" id="loading">Memuat data dari basis data…</div>
+<datalist id="dl-petak"></datalist><datalist id="dl-trace"></datalist>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+let D = null;
+const BASEMAP = true;
+const sb = supabase.createClient(SIM_CONFIG.url, SIM_CONFIG.anonKey);
+let YEAR = 2026, TODAY = '2026-10-14', USE_EF = true, ME = null;
+const SP = {AK:{nama:'Akasia',ilmiah:'Acacia mangium'},EU:{nama:'Eukaliptus',ilmiah:'Eucalyptus pellita'},MR:{nama:'Meranti',ilmiah:'Shorea leprosula'},KR:{nama:'Karet / MPTS',ilmiah:'agroforestri'}};
+const PER = {pokok:'Tanaman pokok',unggulan:'Tanaman unggulan',kehidupan:'Tanaman kehidupan',lindung:'Kawasan lindung',sarpras:'Sarana prasarana'};
+const KEG = {tebang:'Tebang',tanam:'Tanam kembali',pelihara:'Pemeliharaan'};
+const STAT = {tegakan:'Tegakan tumbuh',siap:'Siap tebang',kosong:'Ditebang, menunggu tanam',terlambat:'Terlambat tanam',non:'Bukan tanaman pokok'};
+const DEF = {AK:{daur:7,mai:25,fk:1},EU:{daur:6,mai:28,fk:1}};
+const BUL = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const ROLES = {
+  manajer:{pages:['ringkasan','peta','daur','rkt','telusur','tugas'],home:'ringkasan',edit:{param:1,real:1,prod:1,angk:1}},
+  direksi:{pages:['ringkasan','peta','daur','rkt','telusur'],home:'ringkasan',edit:{}},
+  mandor:{pages:['tugas','peta','rkt'],home:'tugas',edit:{real:1}},
+  tpk:{pages:['telusur','peta'],home:'telusur',edit:{prod:1,angk:1}}
+};
+const ROLE_DESC = {manajer:['Manajer perencanaan','Level taktis · mengatur parameter, RKT, dan semua catatan'],direksi:['Direksi','Level strategis · hanya membaca ringkasan dan laporan'],mandor:['Mandor','Level operasional · mencatat kegiatan di petak'],tpk:['Staf TPK','Level operasional · mencatat LHP dan angkutan kayu']};
+const $ = s => document.querySelector(s);
+let toastT; function toast(m){ const el = document.getElementById('toast'); el.textContent = m; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2600); }
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (n,d=0) => Number(n).toLocaleString('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fdate = s => { const [y,m,d] = s.split('-'); return `${Number(d)} ${BUL[Number(m)-1]} ${y}`; };
+const byDate = k => (a,b) => a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let P, petak, byId, REAL, PROD, ANGK, RKT, LAP = [], role = 'direksi';
+async function q(promise){ const {data, error} = await promise; if (error) throw error; return data; }
+async function fetchAll(){
+  const [pg, jn, pt, bl, rk, re, pr, an, ll, sg, lk] = await Promise.all([
+    q(sb.from('pengaturan').select('*').single()), q(sb.from('jenis').select('*')),
+    q(sb.from('v_web_petak').select('*').order('id')), q(sb.from('v_web_blok').select('*')),
+    q(sb.from('rkt').select('petak,kegiatan,tahun')), q(sb.from('realisasi').select('*').order('tanggal')),
+    q(sb.from('produksi').select('*').order('tgl')), q(sb.from('angkutan').select('*').order('tgl')),
+    q(sb.from('laporan_lapangan').select('*').order('created_at', {ascending:false})),
+    q(sb.from('v_web_sungai').select('*')), q(sb.from('v_web_lindung').select('*'))]);
+  YEAR = pg.tahun_berjalan; TODAY = pg.tanggal_data; USE_EF = pg.pakai_luas_efektif;
+  P = {}; jn.forEach(j => { if (j.daur) P[j.kode] = {daur:+j.daur, mai:+j.mai, fk:+j.fk}; });
+  const fc = (rows, props) => ({type:'FeatureCollection', features: rows.filter(r => r.geojson).map(r => ({type:'Feature', properties: props(r), geometry: r.geojson}))});
+  D = {
+    petak: fc(pt, r => ({id:r.id, blok:r.blok, peruntukan:r.peruntukan, jenis:r.jenis, luas:+r.luas_ha, luas_ef: r.luas_efektif_ha == null ? null : +r.luas_efektif_ha, pct_lindung:+r.pct_lindung || 0, lereng:+r.lereng_rata_pct, elev:+r.elevasi_rata_m, tahun_tanam:r.tahun_tanam, tahun_tebang:r.tahun_tebang, tanam_sebelumnya:r.tanam_sebelumnya, tutupan2020:r.tutupan_2020 || '', lat:+r.lat, lon:+r.lon})),
+    blok: fc(bl, r => ({blok:r.blok, lat:+r.lat, lon:+r.lon})),
+    sungai: fc(sg, r => ({kelas:r.kelas})), lindung: fc(lk, r => ({kriteria:r.kriteria})),
+    rkt: rk.filter(r => r.tahun === YEAR),
+    realisasi: re.map(r => ({id:r.id, petak:r.petak, kegiatan:r.kegiatan, tanggal:r.tanggal, luas:+r.luas_ha, petugas:r.petugas || '–', foto:r.foto_path, lat:r.lat, lon:r.lon})),
+    produksi: pr.map(x => ({id:x.id, petak:x.petak, no_lhp:x.no_lhp, tgl:x.tgl, vol_lhc:+x.vol_lhc, vol_ukur:+x.vol_ukur})),
+    angkutan: an.map(a => ({id:a.id, produksi:a.produksi_id, no_dok:a.no_dok, tgl:a.tgl, vol:+a.vol, tujuan:a.tujuan || ''}))
+  };
+  LAP = ll;
+}
+const fotoUrl = path => path ? sb.storage.from('foto-lapangan').getPublicUrl(path).data.publicUrl : null;
+const L_ = p => (USE_EF && p.luas_ef != null) ? p.luas_ef : p.luas;
+const sumL = ids => ids.reduce((a, id) => a + L_(byId[id]), 0);
+async function refresh(){ await fetchAll(); rebuild(); if (mapReady) rebuildOverlays(); renderAll(); }
+
+function rebuild(){
+  petak = D.petak.features.map(f => Object.assign({}, f.properties));
+  byId = Object.fromEntries(petak.map(p => [p.id, p]));
+  REAL = D.realisasi.slice().sort(byDate('tanggal'));
+  PROD = D.produksi.slice().sort(byDate('tgl'));
+  ANGK = D.angkutan.slice().sort(byDate('tgl'));
+  RKT = {tebang:new Set(), tanam:new Set(), pelihara:new Set()};
+  D.rkt.forEach(r => RKT[r.kegiatan].add(r.petak));
+}
+const umur = p => p.tahun_tanam == null ? null : YEAR - p.tahun_tanam;
+function status(p){
+  if (p.peruntukan !== 'pokok') return 'non';
+  if (p.tahun_tanam == null) return (p.tahun_tebang != null && YEAR > p.tahun_tebang + 1) ? 'terlambat' : 'kosong';
+  return umur(p) >= P[p.jenis].daur ? 'siap' : 'tegakan';
+}
+function vol(p){ const s = status(p); if (s !== 'tegakan' && s !== 'siap') return 0; const q = P[p.jenis]; return q.mai * umur(p) * L_(p) * q.fk; }
+const eudr = p => p.peruntukan !== 'pokok' ? 'na' : (p.tutupan2020.startsWith('Hutan alam') ? 'risiko' : 'siap');
+const done = (keg, id) => REAL.some(r => r.kegiatan === keg && r.petak === id);
+function etat(sp){
+  const luas = petak.filter(p => p.peruntukan === 'pokok' && p.jenis === sp).reduce((a,p) => a + L_(p), 0);
+  const q = P[sp], el = luas / q.daur, vha = q.mai * q.daur * q.fk;
+  return {luas, el, vha, ev: el * vha};
+}
+const planVol = id => { const p = byId[id], q = P[p.jenis]; return q.mai * q.daur * L_(p) * q.fk; };
+function rktSum(sp){
+  const t = [...RKT.tebang].filter(id => byId[id].jenis === sp);
+  return {petak:t.length, luas:sumL(t), vol:t.reduce((a,id) => a + planVol(id), 0),
+          prod:PROD.filter(x => byId[x.petak].jenis === sp).reduce((a,x) => a + x.vol_ukur, 0)};
+}
+const angkutOf = prId => ANGK.filter(a => a.produksi === prId).reduce((s,a) => s + a.vol, 0);
+
+function alerts(){
+  const out = [];
+  ['AK','EU'].forEach(sp => {
+    const e = etat(sp), r = rktSum(sp);
+    if (r.luas > e.el + 0.5) out.push({lv:'warn', go:{page:'daur', label:'Lihat etat'}, t:`RKT tebang ${SP[sp].nama.toLowerCase()} melebihi etat luas`, d:`${fmt(r.luas)} ha direncanakan, etat ${fmt(e.el)} ha (+${fmt((r.luas/e.el-1)*100,1)}%). Volume ${fmt(r.vol)} m³ vs etat ${fmt(e.ev)} m³.`});
+  });
+  const tl = petak.filter(p => status(p) === 'terlambat');
+  if (tl.length) out.push({lv:'crit', t:`${tl.length} petak terlambat tanam`, d:`${tl.map(p=>p.id).join(', ')} ditebang ${tl[0].tahun_tebang} dan belum ditanam kembali. Prinsip THPB mewajibkan permudaan buatan.`, go:{map:tl[0].id, page:'tugas', label:'Buka tugas tanam'}});
+  const off = petak.filter(p => status(p) === 'siap' && !RKT.tebang.has(p.id));
+  if (off.length) out.push({lv:'warn', go:{map:off[0].id, page:'rkt', label:'Buka RKT'}, t:`${off.length} petak melewati daur tetapi belum masuk RKT`, d:`${off.slice(0,8).map(p=>p.id).join(', ')}${off.length>8?', …':''}. Perlu dijadwalkan pada revisi RKT.`});
+  const nolhp = REAL.filter(r => r.kegiatan === 'tebang' && !PROD.some(x => x.petak === r.petak));
+  if (nolhp.length) out.push({lv:'warn', go:{page:'telusur', label:'Catat LHP'}, t:`${nolhp.length} petak ditebang tanpa LHP`, d:`${nolhp.map(r=>r.petak).join(', ')}. Catat hasil produksinya agar kayu dapat ditelusuri.`});
+  const rk = petak.filter(p => eudr(p) === 'risiko');
+  if (rk.length) out.push({lv:'crit', go:{map:rk[0].id, mode:'eudr'}, t:`${rk.length} petak berisiko EUDR`, d:`${rk.map(p=>p.id).join(', ')} dibuka dari hutan alam setelah 2020. Kayunya kelak tidak boleh masuk rantai pasok ekspor ke Uni Eropa.`});
+  const curam = petak.filter(p => p.peruntukan === 'pokok' && p.pct_lindung > 50);
+  if (curam.length) out.push({lv:'warn', go:{map:curam[0].id, page:'daur', label:'Lihat dampak tata hutan'}, t:`${curam.length} petak tanaman pokok lebih dari separuhnya kawasan lindung`, d:`${curam.slice(0,10).map(p=>p.id).join(', ')}${curam.length>10?', …':''}. Hasil analisis lereng dan sempadan sungai di QGIS; layak diusulkan alih fungsi menjadi kawasan lindung pada revisi RKUPH.`});
+  const lapK = LAP.filter(l => l.tingkat === 'kritis' || l.tingkat === 'tinggi');
+  if (lapK.length) out.push({lv:'crit', go:{map:lapK[0].petak}, t:`${lapK.length} laporan lapangan prioritas tinggi`, d:lapK.slice(0,3).map(l => `${l.petak || '–'}: ${l.kategori} — ${l.catatan || ''}`).join(' · ')});
+  const siapB = [...RKT.tebang].filter(id => !done('tebang', id));
+  if (siapB.length) out.push({lv:'', go:{page:'tugas', label:'Buka tugas tebang'}, t:`${siapB.length} petak RKT belum ditebang`, d:`Sisa target tebang 2026: ${siapB.join(', ')}.`});
+  return out;
+}
+
+const alertLi = a => { const g = a.go || {}, al = ROLES[role].pages; const acts = [g.map && al.includes('peta') ? `<button class="btn sm" data-gomap="${g.map}" data-gomode="${g.mode||'status'}">Lihat di peta</button>` : '', g.page && al.includes(g.page) ? `<button class="btn sm" data-gopage="${g.page}">${g.label}</button>` : ''].join(''); return `<li class="${a.lv}"><div><b>${esc(a.t)}</b><span>${esc(a.d)}</span>${acts ? `<div class="act">${acts}</div>` : ''}</div></li>`; };
+/* ---------- charts ---------- */
+const charts = {};
+function chart(id, cfg){ if (charts[id]) charts[id].destroy(); const el = document.getElementById(id); if (!el || !window.Chart) return; charts[id] = new Chart(el, cfg); }
+function baseOpts(extra){
+  const ink = css('--muted'), grid = css('--line');
+  return Object.assign({responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{legend:{labels:{color:ink, boxWidth:12, font:{family:'Source Sans 3'}}}, tooltip:{callbacks:{}}},
+    scales:{x:{ticks:{color:ink}, grid:{color:grid, display:false}, border:{color:grid}}, y:{ticks:{color:ink, callback:v => fmt(v)}, grid:{color:grid}, border:{display:false}, beginAtZero:true}}}, extra || {});
+}
+
+/* ---------- pages ---------- */
+function renderRingkasan(){
+  $('#ring-eyebrow').textContent = role === 'direksi' ? 'Dashboard strategis · hanya baca' : 'Dashboard manajemen';
+  const eA = etat('AK'), eE = etat('EU'), rA = rktSum('AK'), rE = rktSum('EU');
+  const prod = rA.prod + rE.prod, target = rA.vol + rE.vol;
+  const tanamT = RKT.tanam.size, tanamR = [...RKT.tanam].filter(id => done('tanam', id)).length;
+  const al = alerts().filter(a => a.lv === 'crit' || a.lv === 'warn');
+  const k = [
+    {k:'Etat volume', v:`${fmt(eA.ev + eE.ev)} <small>m³/thn</small>`, s:`Akasia ${fmt(eA.ev)} · Eukaliptus ${fmt(eE.ev)}`},
+    {k:'Produksi 2026', v:`${fmt(prod)} <small>m³</small>`, s:`${fmt(prod/target*100,1)}% dari target RKT ${fmt(target)} m³`, p:prod/target},
+    {k:'Tanam kembali', v:`${fmt(sumL([...RKT.tanam].filter(id => done('tanam', id))))} <small>/ ${fmt(sumL([...RKT.tanam]))} ha</small>`, s:`${tanamR} dari ${tanamT} petak target`, p:tanamR/tanamT},
+    {k:'Perlu tindakan', v:`${al.length} <small>isu</small>`, s: al.filter(a=>a.lv==='crit').length + ' kritis · ' + al.filter(a=>a.lv==='warn').length + ' peringatan'}
+  ];
+  $('#kpis').innerHTML = k.map(x => `<div class="kpi"><span class="k">${x.k}</span><span class="v">${x.v}</span>${x.p!=null?`<div class="bar"><i style="width:${Math.min(100,x.p*100)}%"></i></div>`:''}<span class="s">${x.s}</span></div>`).join('');
+  const all = alerts();
+  $('#alert-count').textContent = `${all.length} butir`;
+  $('#alerts').innerHTML = all.map(alertLi).join('');
+  $('#prog-ring').innerHTML = progRows();
+  // blok table
+  const rows = 'ABCDE'.split('').map(b => {
+    const ps = petak.filter(p => p.blok === b), pk = ps.filter(p => p.peruntukan === 'pokok');
+    return `<tr><td><b>Blok ${b}</b></td><td class="r num">${fmt(pk.reduce((a,p)=>a+L_(p),0))}</td><td class="r num">${fmt(pk.reduce((a,p)=>a+vol(p),0))}</td><td class="r num">${pk.filter(p=>status(p)==='siap').length}</td><td class="r num">${pk.filter(p=>status(p)==='terlambat').length || '–'}</td></tr>`;
+  }).join('');
+  $('#tbl-blok').innerHTML = `<thead><tr><th>Blok</th><th class="r">Pokok (ha)</th><th class="r">Tegakan (m³)</th><th class="r">Siap</th><th class="r">Terlambat</th></tr></thead><tbody>${rows}</tbody>`;
+  // production chart
+  const months = BUL.slice(0, 10);
+  const cum = (sp) => { let c = 0; return months.map((m,i) => { c += PROD.filter(x => (!sp || byId[x.petak].jenis === sp) && Number(x.tgl.slice(5,7)) === i+1).reduce((a,x)=>a+x.vol_ukur,0); return c; }); };
+  chart('ch-prod', {type:'line', data:{labels:months, datasets:[
+    {label:'Realisasi total', data:cum(), borderColor:css('--accent'), backgroundColor:css('--accent-soft'), fill:true, tension:.15, pointRadius:2.5, borderWidth:2},
+    {label:'Akasia', data:cum('AK'), borderColor:css('--c-ak'), pointRadius:0, borderWidth:1.5, tension:.15},
+    {label:'Eukaliptus', data:cum('EU'), borderColor:css('--c-eu'), pointRadius:0, borderWidth:1.5, tension:.15},
+    {label:'Target RKT', data:months.map(() => target), borderColor:css('--muted'), borderDash:[5,4], pointRadius:0, borderWidth:1.5}
+  ]}, options:baseOpts({plugins:{legend:{position:'bottom', labels:{color:css('--muted'), boxWidth:12}}, tooltip:{callbacks:{label:c => `${c.dataset.label}: ${fmt(c.parsed.y)} m³`}}}})});
+}
+function progRows(){
+  const row = (label, sub, t, r, unit) => { const pc = t ? r/t : 0; return `<div class="prog"><div>${label}<small>${sub}</small></div><div class="bar"><i class="${pc>1?'over':''}" style="width:${Math.min(100,pc*100)}%"></i></div><div class="num">${fmt(pc*100)}%</div></div>`; };
+  return ['tebang','tanam','pelihara'].map(k => {
+    const ids = [...RKT[k]], t = sumL(ids), r = sumL(ids.filter(id => done(k, id)));
+    return row(KEG[k], `${fmt(r)} / ${fmt(t)} ha`, t, r);
+  }).join('') + (() => { const t = rktSum('AK').vol + rktSum('EU').vol, r = rktSum('AK').prod + rktSum('EU').prod; return row('Volume produksi', `${fmt(r)} / ${fmt(t)} m³`, t, r); })();
+}
+
+function renderTugas(){
+  const can = !!ROLES[role].edit.real;
+  const item = (id, sub, keg, enabled) => `<div class="task"><div><b class="mono">${id}</b> <span class="muted">${sub}</span></div>${can ? `<button class="btn sm ${enabled?'primary':''}" data-done="${keg}" data-id="${id}" ${enabled?'':'disabled'}>${enabled?'Selesai':'Menunggu tebang'}</button>` : ''}</div>`;
+  const teb = [...RKT.tebang].filter(id => !done('tebang', id));
+  const tan = [...RKT.tanam].filter(id => !done('tanam', id));
+  const pel = [...RKT.pelihara].filter(id => !done('pelihara', id));
+  $('#t-tebang').innerHTML = teb.map(id => { const p = byId[id]; return item(id, `Blok ${p.blok} · ${SP[p.jenis].nama} · umur ${umur(p)} thn · ±${fmt(vol(p))} m³`, 'tebang', true); }).join('') || '<p class="note">Semua target tebang selesai.</p>';
+  const tanReady = tan.filter(id => ['kosong','terlambat'].includes(status(byId[id]))).sort((a,b) => (status(byId[b])==='terlambat') - (status(byId[a])==='terlambat'));
+  const tanWait = tan.filter(id => !tanReady.includes(id));
+  $('#t-tanam').innerHTML = (tanReady.map(id => { const p = byId[id], s = status(p); return item(id, `Blok ${p.blok} · ${SP[p.jenis].nama}${s==='terlambat'?' · <span class="pill crit">terlambat sejak '+(p.tahun_tebang+1)+'</span>':' · ditebang 2026'}`, 'tanam', true); }).join('') || '<p class="note">Tidak ada petak yang siap ditanam.</p>') + (tanWait.length ? `<p class="waiting">${tanWait.length} petak lain (${tanWait.join(', ')}) baru bisa ditanam setelah ditebang.</p>` : '');
+  $('#t-pelihara').innerHTML = pel.map(id => { const p = byId[id]; return item(id, `Blok ${p.blok} · ${SP[p.jenis].nama} · umur ${umur(p)} thn`, 'pelihara', true); }).join('') || '<p class="note">Semua target pemeliharaan selesai.</p>';
+  $('#tc-tebang').textContent = `${teb.length} petak`; $('#tc-tanam').textContent = `${tanReady.length} siap · ${tan.length} target`; $('#tc-pelihara').textContent = `${pel.length} petak`;
+  const n = teb.length + tan.length + pel.length; $('#cnt-tugas').textContent = n || ''; $('#cnt-tugas').hidden = !n;
+}
+
+/* ---------- map ---------- */
+const ovl = {};
+function rebuildOverlays(){
+  if (!ovl.sungai) return;
+  ovl.sungai.clearLayers(); ovl.lindung.clearLayers(); ovl.lapor.clearLayers();
+  L.geoJSON(D.lindung, {interactive:false, style:{color:'#2f7fb0', weight:0.6, fillColor:'#4aa3d8', fillOpacity:.28, dashArray:'3 3'}}).addTo(ovl.lindung);
+  L.geoJSON(D.sungai, {interactive:false, style:f => ({color:css('--river'), weight: f.properties.kelas === 'besar' ? 4 : 1.6, opacity:.95})}).addTo(ovl.sungai);
+  const col = {kritis:'#b83a28', tinggi:'#d9622b', sedang:'#c99a0b', rendah:'#2a7d4f'};
+  LAP.filter(l => l.lat && l.lon).forEach(l => {
+    const m = L.circleMarker([l.lat, l.lon], {radius:7, color:'#fff', weight:2, fillColor:col[l.tingkat] || '#555', fillOpacity:1}).addTo(ovl.lapor);
+    const img = fotoUrl(l.foto_path);
+    m.bindPopup(`<div class="lap-pop"><b>${esc(l.kategori)}</b> · ${esc(l.tingkat || '')}<br>Petak ${esc(l.petak || '–')} · ${esc(l.nama_pelapor || '')}<br>${esc(l.catatan || '')}<br><small>${new Date(l.created_at).toLocaleString('id-ID')}</small>${img ? `<img src="${img}" alt="Foto lapangan">` : ''}</div>`);
+  });
+  REAL.filter(r => r.lat && r.lon).forEach(r => {
+    const img = fotoUrl(r.foto);
+    L.circleMarker([r.lat, r.lon], {radius:6, color:'#fff', weight:2, fillColor:'#1c3a29', fillOpacity:1}).addTo(ovl.lapor)
+      .bindPopup(`<div class="lap-pop"><b>${KEG[r.kegiatan]}</b> petak ${r.petak}<br>${esc(r.petugas)} · ${fdate(r.tanggal)}${img ? `<img src="${img}" alt="Foto kegiatan">` : ''}</div>`);
+  });
+}
+let map, gj, blokLayer, sel = null, mapReady = false, fitted = false, baseLayers = {}, curBase = null, opac = 0.85;
+const geLink = (lat, lon, dist) => `https://earth.google.com/web/@${lat},${lon},60a,${dist || 1800}d,35y,0h,45t,0r`;
+const gmLink = (lat, lon, z) => `https://www.google.com/maps/@?api=1&map_action=map&center=${lat},${lon}&zoom=${z || 16}&basemap=satellite`;
+const MODE_TITLE = {status:'Status kerja', jenis:'Peruntukan dan jenis', ku:'Kelas umur', eudr:'Kesiapan EUDR'};
+const MODE_LEG = {
+  status: () => [['--s-tegakan',STAT.tegakan,'tegakan'],['--s-siap',STAT.siap,'siap'],['--s-kosong',STAT.kosong,'kosong'],['--s-terlambat',STAT.terlambat,'terlambat'],['--s-non','Bukan tanaman pokok','non']],
+  jenis: () => [['--c-ak','Akasia (pokok)','AK'],['--c-eu','Eukaliptus (pokok)','EU'],['--c-mr','Meranti (unggulan)','MR'],['--c-kr','Karet / MPTS (kehidupan)','KR'],['--c-lindung','Kawasan lindung','lindung'],['--c-sarpras','Sarana prasarana','sarpras']],
+  ku: () => [['ku:0','Umur 0–1 thn','k0'],['ku:0.5','Umur menengah','k1'],['ku:1','Mendekati daur','k2'],['--s-siap','≥ daur','siap'],['--s-kosong','Belum ditanam','kosong'],['--s-non','Bukan tanaman pokok','non']],
+  eudr: () => [['--good','Siap: bukan hutan alam per 2020','siap'],['--crit','Berisiko: dibuka dari hutan alam setelah 2020','risiko'],['--s-non','Tidak berlaku','na']]
+};
+function catOf(p, mode){
+  const s = status(p);
+  if (mode === 'status') return s;
+  if (mode === 'jenis') return p.peruntukan === 'lindung' || p.peruntukan === 'sarpras' ? p.peruntukan : p.jenis;
+  if (mode === 'eudr') return eudr(p);
+  if (s === 'non') return 'non'; if (s === 'siap') return 'siap'; if (s === 'kosong' || s === 'terlambat') return 'kosong';
+  const t = umur(p) / Math.max(1, P[p.jenis].daur - 1); return t < 0.34 ? 'k0' : t < 0.75 ? 'k1' : 'k2';
+}
+function mix(a, b, t){ const h = x => [1,3,5].map(i => parseInt(x.slice(i,i+2),16)); const A = h(a), B = h(b); return '#' + A.map((v,i) => Math.round(v + (B[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
+const kuColor = t => mix(css('--ku-lo'), css('--ku-hi'), t);
+function fillFor(p){
+  const mode = $('#mode').value, s = status(p);
+  if (mode === 'status') return css('--s-' + s);
+  if (mode === 'jenis') return p.peruntukan === 'lindung' ? css('--c-lindung') : p.peruntukan === 'sarpras' ? css('--c-sarpras') : css('--c-' + p.jenis.toLowerCase());
+  if (mode === 'eudr') { const e = eudr(p); return e === 'siap' ? css('--good') : e === 'risiko' ? css('--crit') : css('--s-non'); }
+  if (s === 'non') return css('--s-non'); if (s === 'siap') return css('--s-siap'); if (s === 'kosong' || s === 'terlambat') return css('--s-kosong');
+  return kuColor(Math.min(1, umur(p) / Math.max(1, P[p.jenis].daur - 1)));
+}
+function styleFor(f){
+  const p = byId[f.properties.id], fb = $('#fblok').value, dim = fb && p.blok !== fb, isSel = p.id === sel;
+  const fo = curBase ? opac : 0.9;
+  return {color: isSel ? '#111' : (curBase ? 'rgba(255,255,255,.75)' : css('--plot-edge')), weight: isSel ? 3.5 : 0.8, fillColor: fillFor(p), fillOpacity: dim ? fo * 0.2 : fo, opacity: dim ? 0.3 : 1};
+}
+function buildBasemaps(){
+  const box = $('#basemap');
+  if (!BASEMAP) {
+    box.innerHTML = '';
+    return;
+  }
+  const att = {attribution:'Citra © Esri, Maxar, Earthstar Geographics'};
+  baseLayers = {
+    sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', Object.assign({maxZoom:19}, att)),
+    osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© kontributor OpenStreetMap'}),
+    topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom:17, attribution:'© OpenStreetMap, SRTM · gaya © OpenTopoMap'})
+  };
+  box.innerHTML = `<details><summary style="cursor:pointer;font-weight:600;font-size:.84rem">Peta dasar &amp; lapisan</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+    <label><input type="radio" name="bm" value="sat" checked> Citra satelit (Esri)</label>
+    <label><input type="radio" name="bm" value="osm"> OpenStreetMap</label>
+    <label><input type="radio" name="bm" value="topo"> Topografi</label>
+    <label><input type="radio" name="bm" value=""> Tanpa peta dasar</label>
+    <b style="font-size:.8rem;margin-top:6px">Lapisan</b>
+    <label><input type="checkbox" data-ovl="sungai" checked> Sungai (ekstraksi DEM)</label>
+    <label><input type="checkbox" data-ovl="lindung" checked> Kawasan lindung (QGIS)</label>
+    <label><input type="checkbox" data-ovl="lapor" checked> Laporan &amp; kegiatan GPS</label>
+    <label for="opac" style="flex-direction:column;align-items:stretch;gap:2px;margin-top:4px">Transparansi petak<input type="range" id="opac" min="0.1" max="1" step="0.05" value="${opac}"></label></div></details>`;
+  box.addEventListener('change', e => {
+    if (e.target.name === 'bm') setBase(e.target.value);
+    if (e.target.dataset.ovl) { const g = ovl[e.target.dataset.ovl]; e.target.checked ? g.addTo(map) : map.removeLayer(g); }
+    if (e.target.id === 'opac') { opac = parseFloat(e.target.value); gj.setStyle(styleFor); }
+  });
+  box.addEventListener('input', e => { if (e.target.id === 'opac') { opac = parseFloat(e.target.value); gj.setStyle(styleFor); } });
+  setBase('sat');
+}
+function setBase(k){
+  if (curBase && baseLayers[curBase]) map.removeLayer(baseLayers[curBase]);
+  curBase = k || null; if (curBase) baseLayers[curBase].addTo(map).bringToBack();
+  document.querySelectorAll('.blok-lbl').forEach(el => el.classList.toggle('flat', !curBase));
+  gj.setStyle(styleFor);
+}
+function initMap(){
+  if (mapReady || !window.L) return;
+  map = L.map('map', {attributionControl:BASEMAP, zoomSnap:0.25, zoomControl:false});
+  L.control.zoom({position:'topleft'}).addTo(map);
+  ovl.sungai = L.layerGroup().addTo(map); ovl.lindung = L.layerGroup().addTo(map); ovl.lapor = L.layerGroup().addTo(map);
+  gj = L.geoJSON(D.petak, {style:styleFor, onEachFeature:(f, l) => {
+    l.on('click', () => selectPetak(f.properties.id));
+    l.on('mouseover', () => hoverInfo(f.properties.id));
+    l.on('mouseout', () => hoverInfo(null));
+    l.bindTooltip(f.properties.id, {permanent:true, direction:'center', className:'pt-label', interactive:false});
+  }}).addTo(map);
+  rebuildOverlays();
+  blokLayer = L.geoJSON(D.blok, {style:{color:css('--ink'), weight:2.5, fill:false, dashArray:null}, interactive:false}).addTo(map);
+  D.blok.features.forEach(f => L.marker([f.properties.lat, f.properties.lon], {interactive:false, icon:L.divIcon({className:'', html:`<div class="blok-lbl flat"><span class="full">BLOK </span>${f.properties.blok}</div>`, iconSize:[90,20], iconAnchor:[45,10]})}).addTo(map));
+  L.control.scale({imperial:false, position:'bottomleft'}).addTo(map);
+  const lab = () => { const m = document.getElementById('map'); m.classList.toggle('hide-labels', map.getZoom() < 13.75); m.classList.toggle('zoomed', map.getZoom() >= 12.75); };
+  map.on('zoomend', lab);
+  const c = gj.getBounds().getCenter();
+  $('#ge-all').href = geLink(c.lat.toFixed(5), c.lng.toFixed(5), 16000);
+  mapReady = true;
+  buildBasemaps();
+  lab();
+}
+function fitAll(){ if (!mapReady) return; map.invalidateSize(); map.fitBounds(gj.getBounds(), {padding:[16,16], paddingBottomRight:[window.innerWidth > 1020 ? 330 : 16, 16]}); }
+function hoverInfo(id){
+  const box = $('#mapinfo'); if (!id) { box.hidden = true; return; }
+  const p = byId[id], s = status(p);
+  box.innerHTML = `<b>${p.id}</b> · Blok ${p.blok}<span>${p.jenis ? SP[p.jenis].nama : PER[p.peruntukan]}${p.peruntukan==='pokok' ? ' · ' + STAT[s] + (umur(p)!=null ? ' · umur ' + umur(p) + ' thn' : '') : ''}</span>${vol(p) ? `<span>±${fmt(vol(p))} m³ tegakan</span>` : ''}`;
+  box.hidden = false;
+}
+function refreshMap(){
+  if (mapReady) { gj.setStyle(styleFor); blokLayer.setStyle({color: curBase ? '#ffffff' : css('--ink')}); }
+  const mode = $('#mode').value;
+  $('#legend-title').textContent = MODE_TITLE[mode];
+  $('#legend').innerHTML = MODE_LEG[mode]().map(([c,l]) => `<span><i style="background:${c.startsWith('ku:') ? kuColor(Number(c.slice(3))) : css(c)}"></i>${l}</span>`).join('');
+  document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  renderDetail(sel);
+}
+function selectPetak(id, fly){
+  sel = id; refreshMap();
+  if (fly && mapReady && id) { gj.eachLayer(l => { if (l.feature.properties.id === id) map.flyToBounds(l.getBounds(), {maxZoom:15, padding:[80,80], paddingBottomRight:[window.innerWidth > 1020 ? 380 : 80, 80], duration:.6}); }); }
+}
+function renderDetail(id){
+  const el = $('#detail'), p = id && byId[id];
+  el.classList.toggle('empty', !p);
+  if (!p) {
+    const mode = $('#mode').value, fb = $('#fblok').value, ps = petak.filter(x => !fb || x.blok === fb);
+    const rows = MODE_LEG[mode]().map(([c,l,k]) => { const n = ps.filter(x => catOf(x, mode) === k).length; return n ? `<span><i style="background:${c.startsWith('ku:') ? kuColor(Number(c.slice(3))) : css(c)}"></i>${l}</span><b class="num">${n} · ${fmt(n*50)} ha</b>` : ''; }).join('');
+    el.innerHTML = `<div class="eyebrow">${fb ? 'Blok ' + fb : 'Seluruh areal'}</div><h3 style="margin:4px 0 2px">${MODE_TITLE[mode]}</h3><p class="note" style="margin:0">${ps.length} petak · ${fmt(ps.length*50)} ha. Klik petak untuk detail.</p><div class="statgrid">${rows}</div>
+      <div class="acts"><a class="btn sm" target="_blank" rel="noopener" href="${$('#ge-all').href || '#'}">Lihat lokasi di Google Earth</a></div>`;
+    return;
+  }
+  const s = status(p), e = eudr(p);
+  const sp = p.jenis ? `${SP[p.jenis].nama} <em style="font-weight:400;color:var(--muted)">${SP[p.jenis].ilmiah}</em>` : '–';
+  const sc = {tegakan:'good',siap:'acc',kosong:'warn',terlambat:'crit',non:'mute'}[s];
+  const hist = REAL.filter(r => r.petak === id).map(r => `<li><span>${KEG[r.kegiatan]} · ${esc(r.petugas)}</span><span class="num">${fdate(r.tanggal)}</span></li>`)
+    .concat(PROD.filter(x => x.petak === id).map(x => `<li><span>${x.no_lhp} · ${fmt(x.vol_ukur)} m³</span><span class="num">${fdate(x.tgl)}</span></li>`));
+  const hasProd = PROD.some(x => x.petak === id);
+  LAP.filter(l => l.petak === id).forEach(l => hist.push(`<li><span>Laporan ${esc(l.kategori)} · ${esc(l.tingkat || '')}</span><span class="num">${fdate(String(l.created_at).slice(0,10))}</span></li>`));
+  el.innerHTML = `<button class="close" type="button" data-close aria-label="Tutup detail">×</button>
+  <div class="eyebrow">Blok ${p.blok} · ${PER[p.peruntukan]}</div>
+  <h3 style="margin:2px 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="mono" style="font-size:1.3rem">${p.id}</span><span class="pill ${sc}">${p.peruntukan==='pokok'?STAT[s]:PER[p.peruntukan]}</span></h3>
+  <dl><dt>Jenis</dt><dd>${sp}</dd><dt>Luas</dt><dd class="num">${p.luas} ha</dd>
+  <dt>Tahun tanam</dt><dd>${p.tahun_tanam ?? (p.tahun_tebang ? 'belum ditanam (tebang '+p.tahun_tebang+')' : '–')}</dd>
+  ${p.peruntukan==='pokok' ? `<dt>Umur / daur</dt><dd>${umur(p) ?? '–'} / ${P[p.jenis].daur} thn</dd><dt>Volume dugaan</dt><dd class="num">${fmt(vol(p))} m³</dd><dt>RKT 2026</dt><dd>${['tebang','tanam','pelihara'].filter(k=>RKT[k].has(id)).map(k=>KEG[k]).join(', ') || '–'}</dd>` : ''}
+  <dt>Luas efektif</dt><dd class="num">${p.luas_ef != null ? fmt(p.luas_ef,1) + ' ha' : '–'}</dd><dt>Kawasan lindung</dt><dd class="num">${fmt(p.pct_lindung,1)}%${p.pct_lindung > 50 ? ' <span class="pill warn">usul alih fungsi</span>' : ''}</dd>
+  <dt>Lereng / elevasi</dt><dd class="num">${fmt(p.lereng,1)}% · ${fmt(p.elev)} m dpl</dd>
+  <dt>Tutupan 2020</dt><dd>${esc(p.tutupan2020)}</dd><dt>EUDR</dt><dd>${e==='na'?'Tidak berlaku':e==='siap'?'<span class="pill good">Siap</span>':'<span class="pill crit">Berisiko</span>'}</dd>
+  <dt>Koordinat</dt><dd class="num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</dd></dl>
+  <div class="acts"><a class="btn sm primary" target="_blank" rel="noopener" href="${geLink(p.lat, p.lon)}">Google Earth</a><a class="btn sm" target="_blank" rel="noopener" href="${gmLink(p.lat, p.lon)}">Google Maps satelit</a>${hasProd && ROLES[role].pages.includes('telusur') ? `<button class="btn sm" type="button" data-tracepetak="${p.id}">Telusuri kayu</button>` : ''}</div>
+  <h3 style="margin-top:16px;font-size:1rem">Riwayat ${YEAR}</h3>${hist.length ? `<ul class="hist">${hist.join('')}</ul>` : '<p class="empty">Belum ada kegiatan tercatat.</p>'}`;
+}
+
+/* ---------- daur ---------- */
+function renderDaur(){
+  const can = !!ROLES[role].edit.param;
+  $('#param-note').textContent = can ? 'Perubahan tersimpan otomatis' : 'Hanya manajer perencanaan yang dapat mengubah';
+  if (!$('#params').dataset.built) {
+    $('#params').innerHTML = ['AK','EU'].map(sp => `<fieldset><legend>${SP[sp].nama} <em>${SP[sp].ilmiah}</em></legend>
+      <div class="field"><label for="${sp}-daur">Daur (thn)</label><input type="number" id="${sp}-daur" min="3" max="15" step="1"></div>
+      <div class="field"><label for="${sp}-mai">MAI (m³/ha/thn)</label><input type="number" id="${sp}-mai" min="5" max="60" step="0.5"></div>
+      <div class="field"><label for="${sp}-fk">Faktor koreksi</label><input type="number" id="${sp}-fk" min="0.5" max="1" step="0.05"></div></fieldset>`).join('') + `<div><button class="btn sm" type="button" id="param-reset">Kembalikan parameter awal</button></div>`;
+    $('#params').dataset.built = 1;
+    $('#params').addEventListener('change', e => {
+      if (!ROLES[role].edit.param) return;
+      const np = JSON.parse(JSON.stringify(P));
+      ['AK','EU'].forEach(sp => ['daur','mai','fk'].forEach(k => { const v = parseFloat($(`#${sp}-${k}`).value); if (!isNaN(v) && v > 0) np[sp][k] = k==='daur' ? Math.round(v) : v; }));
+      Promise.all(['AK','EU'].map(sp => sb.from('jenis').update(np[sp]).eq('kode', sp))).then(rs => { const er = rs.find(r => r.error); if (er) toast('Gagal menyimpan: ' + er.error.message); else { toast('Parameter tersimpan di basis data'); refresh(); } });
+    });
+    $('#param-reset').addEventListener('click', () => { if (!ROLES[role].edit.param) return; Promise.all(['AK','EU'].map(sp => sb.from('jenis').update(DEF[sp]).eq('kode', sp))).then(() => { toast('Parameter awal dikembalikan'); refresh(); }); });
+    $('#pakai-ef').addEventListener('change', e => { if (!ROLES[role].edit.param) { e.target.checked = USE_EF; return; } sb.from('pengaturan').update({pakai_luas_efektif: e.target.checked}).eq('id', 1).then(({error}) => { if (error) toast('Gagal: ' + error.message); else { toast(e.target.checked ? 'Memakai luas efektif' : 'Memakai luas bruto'); refresh(); } }); });
+  }
+  ['AK','EU'].forEach(sp => ['daur','mai','fk'].forEach(k => { const el = $(`#${sp}-${k}`); el.value = P[sp][k]; el.disabled = !can; }));
+  $('#param-reset').disabled = !can; $('#pakai-ef').checked = USE_EF; $('#pakai-ef').disabled = !can;
+  const pk = petak.filter(p => p.peruntukan === 'pokok'), bru = pk.reduce((a,p)=>a+p.luas,0), ef = pk.reduce((a,p)=>a+(p.luas_ef ?? p.luas),0);
+  const evB = ['AK','EU'].reduce((a,sp) => { const q = P[sp], l = pk.filter(p=>p.jenis===sp).reduce((s,p)=>s+p.luas,0); return a + l/q.daur*q.mai*q.daur*q.fk; }, 0);
+  const evE = ['AK','EU'].reduce((a,sp) => { const q = P[sp], l = pk.filter(p=>p.jenis===sp).reduce((s,p)=>s+(p.luas_ef ?? p.luas),0); return a + l/q.daur*q.mai*q.daur*q.fk; }, 0);
+  $('#impact').innerHTML = `<div><span class="note">Luas tanaman pokok bruto → efektif</span><b>${fmt(bru)} → ${fmt(ef)} ha</b><span class="note">${fmt((1-ef/bru)*100,1)}% menjadi kawasan lindung</span></div>
+    <div><span class="note">Etat volume bruto → efektif</span><b>${fmt(evB)} → ${fmt(evE)} m³</b><span class="note">berkurang ${fmt(evB-evE)} m³ per tahun</span></div>
+    <div><span class="note">Petak pokok &gt; 50% lindung</span><b>${pk.filter(p=>p.pct_lindung>50).length} petak</b><span class="note">diusulkan alih fungsi pada revisi RKUPH</span></div>`;
+  // etat table
+  const rows = ['AK','EU'].map(sp => { const e = etat(sp), r = rktSum(sp), over = r.vol > e.ev + 1;
+    return `<tr><td><b>${SP[sp].nama}</b></td><td class="r num">${fmt(e.luas)}</td><td class="r num">${P[sp].daur}</td><td class="r num">${fmt(e.el,1)}</td><td class="r num">${fmt(e.vha,1)}</td><td class="r num"><b>${fmt(e.ev)}</b></td><td class="r num">${fmt(r.vol)}</td><td>${over?`<span class="pill warn">+${fmt((r.vol/e.ev-1)*100,1)}% di atas etat</span>`:'<span class="pill good">Dalam etat</span>'}</td></tr>`; }).join('');
+  const tA = etat('AK'), tE = etat('EU');
+  $('#tbl-etat').innerHTML = `<thead><tr><th>Jenis</th><th class="r">Luas efektif (ha)</th><th class="r">Daur (thn)</th><th class="r">Etat luas (ha/thn)</th><th class="r">Vol/ha saat daur (m³)</th><th class="r">Etat volume (m³/thn)</th><th class="r">Target RKT (m³)</th><th>Status</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td class="r num">${fmt(tA.luas+tE.luas)}</td><td></td><td class="r num">${fmt(tA.el+tE.el,1)}</td><td></td><td class="r num"><b>${fmt(tA.ev+tE.ev)}</b></td><td class="r num">${fmt(rktSum('AK').vol+rktSum('EU').vol)}</td><td></td></tr></tbody>`;
+  // KU charts
+  ['AK','EU'].forEach(sp => {
+    const d = P[sp].daur, pk = petak.filter(p => p.peruntukan === 'pokok' && p.jenis === sp);
+    const labels = ['Kosong'].concat(Array.from({length:d}, (_,i) => String(i))).concat(['≥ ' + d]);
+    const data = labels.map((l,i) => i === 0 ? pk.filter(p => p.tahun_tanam == null).reduce((a,p)=>a+L_(p),0) : i === labels.length-1 ? pk.filter(p => umur(p) != null && umur(p) >= d).reduce((a,p)=>a+L_(p),0) : pk.filter(p => umur(p) === i-1).reduce((a,p)=>a+L_(p),0));
+    const normal = etat(sp).el;
+    const colors = labels.map((l,i) => i === 0 ? css('--s-kosong') : i === labels.length-1 ? css('--s-siap') : kuColor((i-1)/Math.max(1,d-1)));
+    chart('ch-ku-' + sp, {type:'bar', data:{labels, datasets:[
+      {type:'line', label:'Hutan normal (' + fmt(normal) + ' ha per kelas)', data:labels.map((l,i) => (i>0 && i<labels.length-1) ? normal : null), borderColor:css('--ink'), borderDash:[5,4], borderWidth:1.5, pointRadius:0, spanGaps:false},
+      {label:'Luas (ha)', data, backgroundColor:colors, borderRadius:3}
+    ]}, options:baseOpts({plugins:{legend:{position:'bottom', labels:{color:css('--muted'), boxWidth:12, filter:i => i.datasetIndex === 0}}, tooltip:{callbacks:{title:c => c[0].label === 'Kosong' ? 'Belum ditanam' : c[0].label.startsWith('≥') ? 'Umur ' + c[0].label + ' thn' : 'Umur ' + c[0].label + ' thn', label:c => `${c.dataset.label}: ${fmt(c.parsed.y)} ha`}}}, scales:{x:{title:{display:true, text:'Umur (thn)', color:css('--muted')}, ticks:{color:css('--muted')}, grid:{display:false}}, y:{ticks:{color:css('--muted')}, grid:{color:css('--line')}, beginAtZero:true}}})});
+  });
+  // jadwal
+  const years = Array.from({length:10}, (_,i) => YEAR + i);
+  const sched = {AK:years.map(() => 0), EU:years.map(() => 0)};
+  petak.filter(p => p.peruntukan === 'pokok').forEach(p => {
+    const q = P[p.jenis], v = q.mai * q.daur * L_(p) * q.fk; let plant;
+    if (RKT.tebang.has(p.id)) { sched[p.jenis][0] += planVol(p.id); plant = p.tahun_tanam === YEAR ? YEAR : YEAR + 1; }
+    else if (p.tahun_tanam != null) { let h = Math.max(p.tahun_tanam + q.daur, YEAR + 1); while (h <= YEAR + 9) { sched[p.jenis][h - YEAR] += v; h += q.daur; } return; }
+    else plant = YEAR + 1;
+    for (let h = plant + q.daur; h <= YEAR + 9; h += q.daur) sched[p.jenis][h - YEAR] += v;
+  });
+  const et = etat('AK').ev + etat('EU').ev;
+  chart('ch-jadwal', {type:'bar', data:{labels:years, datasets:[
+    {type:'line', label:'Etat total (' + fmt(et) + ' m³)', data:years.map(() => et), borderColor:css('--ink'), borderDash:[5,4], borderWidth:1.5, pointRadius:0},
+    {label:'Akasia', data:sched.AK, backgroundColor:css('--c-ak'), stack:'s', borderRadius:2},
+    {label:'Eukaliptus', data:sched.EU, backgroundColor:css('--c-eu'), stack:'s', borderRadius:2}
+  ]}, options:baseOpts({plugins:{legend:{position:'bottom', labels:{color:css('--muted'), boxWidth:12}}, tooltip:{callbacks:{label:c => `${c.dataset.label}: ${fmt(c.parsed.y)} m³`}}}, scales:{x:{stacked:true, ticks:{color:css('--muted')}, grid:{display:false}}, y:{stacked:true, beginAtZero:true, ticks:{color:css('--muted'), callback:v => fmt(v)}, grid:{color:css('--line')}}}})});
+}
+
+/* ---------- RKT ---------- */
+function renderRKT(){
+  const can = !!ROLES[role].edit.real;
+  const rows = [];
+  ['tebang','tanam','pelihara'].forEach(k => ['AK','EU'].forEach(sp => {
+    const ids = [...RKT[k]].filter(id => byId[id].jenis === sp); if (!ids.length) return;
+    const r = ids.filter(id => done(k, id)).length, pc = r / ids.length;
+    let vt = '', vr = '';
+    if (k === 'tebang') { const s = rktSum(sp); vt = fmt(s.vol); vr = fmt(s.prod); }
+    rows.push(`<tr><td>${KEG[k]}</td><td>${SP[sp].nama}</td><td class="r num">${ids.length}</td><td class="r num">${fmt(sumL(ids))}</td><td class="r num">${fmt(sumL(ids.filter(id => done(k, id))))}</td><td style="min-width:120px"><div class="bar" style="height:8px"><i style="width:${pc*100}%"></i></div></td><td class="r num">${fmt(pc*100)}%</td><td class="r num">${vt||'–'}</td><td class="r num">${vr||'–'}</td></tr>`);
+  }));
+  $('#tbl-rkt').innerHTML = `<thead><tr><th>Kegiatan</th><th>Jenis</th><th class="r">Petak</th><th class="r">Target (ha)</th><th class="r">Realisasi (ha)</th><th>Capaian</th><th class="r">%</th><th class="r">Target vol. (m³)</th><th class="r">LHP (m³)</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  $('#alerts-rkt').innerHTML = alerts().map(alertLi).join('');
+  fillRealPetak();
+  [...$('#f-real').elements].forEach(el => el.disabled = !can);
+  $('#msg-real').className = 'msg'; if (!can) $('#msg-real').textContent = 'Peran ini hanya dapat melihat. Masuk sebagai mandor atau manajer untuk mencatat realisasi.';
+  const list = REAL.slice().reverse().slice(0, 25);
+  $('#real-count').textContent = `${REAL.length} catatan · 25 terbaru`;
+  $('#tbl-real').innerHTML = `<thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Petak</th><th>Jenis</th><th class="r">Luas (ha)</th><th>Petugas</th></tr></thead><tbody>${list.map(r => `<tr><td class="num">${fdate(r.tanggal)}</td><td>${KEG[r.kegiatan]}</td><td class="mono">${r.petak}</td><td>${SP[byId[r.petak].jenis].nama}</td><td class="r num">${r.luas}</td><td>${esc(r.petugas)}</td></tr>`).join('')}</tbody>`;
+}
+function eligible(k){
+  return [...RKT[k]].filter(id => !done(k, id) && (k !== 'tanam' || ['kosong','terlambat'].includes(status(byId[id]))) && (k !== 'tebang' || status(byId[id]) === 'siap'));
+}
+function fillRealPetak(){
+  const k = $('#r-keg').value, ids = eligible(k);
+  $('#r-petak').innerHTML = ids.length ? ids.map(id => `<option value="${id}">${id} · ${SP[byId[id].jenis].nama}${status(byId[id])==='terlambat'?' (terlambat)':''}</option>`).join('') : '<option value="">Tidak ada petak tersisa</option>';
+}
+async function addReal(keg, id, tgl, petugas){
+  const ok = eligible(keg).includes(id);
+  if (!ok) return 'Petak ini tidak bisa dicatat untuk kegiatan tersebut.';
+  const {error} = await sb.from('realisasi').insert({petak:id, kegiatan:keg, tanggal:tgl, luas_ha:L_(byId[id]), petugas:petugas || (ME && ME.nama) || 'Petugas'});
+  if (error) return 'Gagal menyimpan: ' + error.message;
+  await refresh(); return '';
+}
+
+/* ---------- telusur ---------- */
+function renderTelusur(){
+  const ed = ROLES[role].edit;
+  const tebangNoLhp = REAL.filter(r => r.kegiatan === 'tebang' && !PROD.some(x => x.petak === r.petak)).map(r => r.petak);
+  $('#pr-petak').innerHTML = tebangNoLhp.length ? tebangNoLhp.map(id => `<option>${id}</option>`).join('') : '<option value="">Tidak ada petak ditebang tanpa LHP</option>';
+  $('#pr-no').value = `LHP-RSL/${YEAR}/${String(PROD.length + 1).padStart(3,'0')}`;
+  updLhc();
+  const withStock = PROD.filter(x => x.vol_ukur - angkutOf(x.id) > 0);
+  $('#an-prod').innerHTML = withStock.length ? withStock.map(x => `<option value="${x.id}">${x.no_lhp} · ${x.petak} · sisa ${fmt(x.vol_ukur - angkutOf(x.id))} m³</option>`).join('') : '<option value="">Tidak ada stok di TPK</option>';
+  $('#an-no').value = `SKSHHK-RSL-${YEAR}-${String(ANGK.length + 1).padStart(4,'0')}`;
+  [...$('#f-prod').elements].forEach(el => el.disabled = !ed.prod); [...$('#f-angk').elements].forEach(el => el.disabled = !ed.angk);
+  $('#pr-lhc').disabled = false; $('#pr-lhc').readOnly = true;
+  if (!ed.prod) { $('#msg-prod').className = 'msg'; $('#msg-prod').textContent = 'Hanya staf TPK atau manajer yang dapat mencatat LHP.'; }
+  if (!ed.angk) { $('#msg-angk').className = 'msg'; $('#msg-angk').textContent = 'Hanya staf TPK atau manajer yang dapat mencatat angkutan.'; }
+  $('#tbl-prod').innerHTML = `<thead><tr><th>No. LHP</th><th>Petak</th><th>Jenis</th><th>Tgl tebang</th><th class="r">LHC (m³)</th><th class="r">Ukur (m³)</th><th class="r">Diangkut (m³)</th><th class="r">Sisa TPK (m³)</th></tr></thead><tbody>${PROD.slice().reverse().map(x => { const a = angkutOf(x.id), s = x.vol_ukur - a; return `<tr><td class="mono">${x.no_lhp}</td><td class="mono">${x.petak}</td><td>${SP[byId[x.petak].jenis].nama}</td><td class="num">${fdate(x.tgl)}</td><td class="r num">${fmt(x.vol_lhc)}</td><td class="r num">${fmt(x.vol_ukur)}</td><td class="r num">${fmt(a)}</td><td class="r num">${s>0?'<b>'+fmt(s)+'</b>':'0'}</td></tr>`; }).join('')}</tbody>`;
+  const al = ANGK.slice().reverse();
+  $('#angk-count').textContent = `${al.length} dokumen · ${fmt(al.reduce((s,a)=>s+a.vol,0))} m³`;
+  $('#tbl-angk').innerHTML = `<thead><tr><th>No. dokumen</th><th>Tanggal</th><th>LHP</th><th>Petak asal</th><th class="r">Volume (m³)</th><th>Tujuan</th><th></th></tr></thead><tbody>${al.slice(0, 20).map(a => { const x = PROD.find(p => p.id === a.produksi); return `<tr><td class="mono">${a.no_dok}</td><td class="num">${fdate(a.tgl)}</td><td class="mono">${x.no_lhp}</td><td class="mono">${x.petak}</td><td class="r num">${fmt(a.vol)}</td><td>${esc(a.tujuan)}</td><td><button class="btn sm" data-trace="${a.no_dok}">Telusuri</button></td></tr>`; }).join('')}</tbody>`;
+  $('#dl-trace').innerHTML = ANGK.map(a => `<option value="${a.no_dok}">`).join('') + PROD.map(x => `<option value="${x.no_lhp}">`).join('');
+}
+function updLhc(){ const id = $('#pr-petak').value; if (!id) { $('#pr-lhc').value = ''; return; } const p = byId[id], q = P[p.jenis]; const age = p.tanam_sebelumnya ? YEAR - p.tanam_sebelumnya : q.daur; $('#pr-lhc').value = fmt(q.mai * age * L_(p) * q.fk); }
+function trace(qs){
+  qs = qs.trim().toUpperCase(); const out = $('#trace-out'); if (!qs) { out.innerHTML = ''; return; }
+  let a = ANGK.find(x => x.no_dok.toUpperCase() === qs), pr, p, docs;
+  if (a) pr = PROD.find(x => x.id === a.produksi);
+  if (!pr) pr = PROD.find(x => x.no_lhp.toUpperCase() === qs);
+  if (pr) p = byId[pr.petak]; else p = byId[qs];
+  if (!p) { out.innerHTML = `<p class="msg err">Tidak ditemukan. Periksa penulisan nomor dokumen (contoh: ${ANGK[0].no_dok}), nomor LHP, atau kode petak (contoh: A07).</p>`; return; }
+  const prs = pr ? [pr] : PROD.filter(x => x.petak === p.id);
+  const e = eudr(p);
+  const verdict = p.peruntukan !== 'pokok' ? '<span class="pill mute">Bukan areal produksi</span>' : e === 'siap' ? '<span class="pill good">Memenuhi syarat ketelusuran EUDR</span>' : '<span class="pill crit">Tidak memenuhi EUDR: dibuka dari hutan alam setelah 2020</span>';
+  const card1 = a ? `<div class="tcard"><div class="t">1 · Dokumen angkutan</div><dl><dt>Nomor</dt><dd class="mono">${a.no_dok}</dd><dt>Tanggal</dt><dd>${fdate(a.tgl)}</dd><dt>Volume</dt><dd class="num">${fmt(a.vol)} m³</dd><dt>Tujuan</dt><dd>${esc(a.tujuan)}</dd></dl></div>` : `<div class="tcard"><div class="t">1 · Dokumen angkutan</div><p class="note">${prs.length ? ANGK.filter(x => prs.some(y => y.id === x.produksi)).length + ' dokumen dari sumber ini.' : 'Belum ada angkutan dari petak ini.'}</p></div>`;
+  const card2 = prs.length ? `<div class="tcard"><div class="t">2 · Laporan hasil produksi</div><dl>${prs.map(x => `<dt>No. LHP</dt><dd class="mono">${x.no_lhp}</dd><dt>Tgl tebang</dt><dd>${fdate(x.tgl)}</dd><dt>LHC / ukur</dt><dd class="num">${fmt(x.vol_lhc)} / ${fmt(x.vol_ukur)} m³</dd><dt>Diangkut</dt><dd class="num">${fmt(angkutOf(x.id))} m³</dd>`).join('')}</dl></div>` : `<div class="tcard"><div class="t">2 · Laporan hasil produksi</div><p class="note">Belum ada LHP untuk petak ini.</p></div>`;
+  const card3 = `<div class="tcard end"><div class="t">3 · Petak asal</div><dl><dt>Petak</dt><dd class="mono">${p.id} · Blok ${p.blok}</dd><dt>Jenis</dt><dd>${p.jenis ? SP[p.jenis].nama : PER[p.peruntukan]}</dd><dt>Tanam (rotasi ditebang)</dt><dd>${p.tanam_sebelumnya ?? p.tahun_tanam ?? '–'}</dd><dt>Koordinat</dt><dd class="num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</dd><dt>Luas</dt><dd class="num">${p.luas} ha</dd><dt>Tutupan 2020</dt><dd>${esc(p.tutupan2020)}</dd></dl></div>`;
+  out.innerHTML = `<div class="trace">${card1}${card2}${card3}</div><div class="toolbar" style="margin-top:12px;justify-content:space-between">${verdict}<span style="display:flex;gap:8px"><button class="btn sm" type="button" data-showmap="${p.id}">Tampilkan di peta</button><button class="btn sm" type="button" id="copy-proof">Salin ringkasan bukti</button></span></div><p class="msg" id="msg-proof"></p>`;
+  $('#copy-proof').onclick = () => {
+    const txt = `Bukti asal-usul kayu — PT Rimba Selatan Lestari (fiktif)\n${a ? `Dokumen angkutan: ${a.no_dok}, ${fdate(a.tgl)}, ${a.vol} m3, tujuan ${a.tujuan}\n` : ''}${prs.map(x => `LHP: ${x.no_lhp}, tebang ${fdate(x.tgl)}, volume ukur ${x.vol_ukur} m3`).join('\n')}\nPetak asal: ${p.id} (Blok ${p.blok}), ${p.jenis ? SP[p.jenis].nama : ''}, luas ${p.luas} ha\nKoordinat pusat petak: ${p.lat}, ${p.lon}\nTutupan per 31 Des 2020: ${p.tutupan2020}\nStatus EUDR: ${e === 'siap' ? 'memenuhi' : e === 'risiko' ? 'tidak memenuhi' : 'tidak berlaku'}`;
+    const m = $('#msg-proof');
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { m.className = 'msg ok'; m.textContent = 'Ringkasan bukti tersalin.'; }).catch(() => { m.className = 'msg'; m.innerHTML = `<textarea class="copyarea" readonly>${esc(txt)}</textarea>`; m.querySelector('textarea').select(); });
+  };
+}
+
+/* ---------- navigation & roles ---------- */
+let current = null;
+function show(page){
+  const allowed = ROLES[role].pages; if (!allowed.includes(page)) page = ROLES[role].home;
+  current = page;
+  const rd = ROLE_DESC[role]; $('#who').innerHTML = `<b>${rd[0]}</b>${rd[1]}`;
+  document.querySelectorAll('.page').forEach(s => s.hidden = s.id !== 'p-' + page);
+  document.querySelectorAll('#nav button[data-page]').forEach(b => { b.hidden = !allowed.includes(b.dataset.page); b.setAttribute('aria-current', b.dataset.page === page ? 'page' : 'false'); });
+  try { history.replaceState(null, '', '#' + page); } catch(e) {}
+  renderPage(page);
+  if (page === 'peta') { initMap(); setTimeout(() => { if (!map) return; map.invalidateSize(); if (!fitted) { fitAll(); fitted = true; } }, 40); refreshMap(); }
+}
+function renderPage(pg){
+  if (pg === 'ringkasan') renderRingkasan();
+  if (pg === 'tugas') renderTugas();
+  if (pg === 'daur') renderDaur();
+  if (pg === 'rkt') renderRKT();
+  if (pg === 'telusur') renderTelusur();
+  if (pg === 'peta') refreshMap();
+}
+function renderAll(){ renderTugas(); renderPage(current); }
+
+document.querySelector('main').addEventListener('click', e => {
+  const m = e.target.closest('[data-gomap]'); if (m) { $('#mode').value = m.dataset.gomode; show('peta'); setTimeout(() => selectPetak(m.dataset.gomap, true), 120); return; }
+  const g = e.target.closest('[data-gopage]'); if (g) show(g.dataset.gopage);
+});
+document.getElementById('nav').addEventListener('click', e => { const b = e.target.closest('button[data-page]'); if (b) show(b.dataset.page); });
+$('#logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+$('#reload').addEventListener('click', async () => { await refresh(); toast('Data dimuat ulang'); });
+$('#modes').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (!b) return; $('#mode').value = b.dataset.mode; refreshMap(); });
+$('#detail').addEventListener('click', e => {
+  if (e.target.closest('[data-close]')) { sel = null; refreshMap(); }
+  const t = e.target.closest('[data-tracepetak]'); if (t) { show('telusur'); $('#q').value = t.dataset.tracepetak; trace(t.dataset.tracepetak); }
+});
+$('#fblok').addEventListener('change', () => { refreshMap(); if (mapReady) { const b = $('#fblok').value; if (b) { const ls = []; gj.eachLayer(l => { if (l.feature.properties.blok === b) ls.push(l); }); map.flyToBounds(L.featureGroup(ls).getBounds(), {padding:[30,30], paddingBottomRight:[window.innerWidth > 1020 ? 360 : 30, 30], duration:.6}); } else fitAll(); } });
+$('#cari').addEventListener('change', e => { const id = e.target.value.trim().toUpperCase(); if (byId[id]) selectPetak(id, true); });
+$('#r-keg').addEventListener('change', fillRealPetak);
+$('#f-real').addEventListener('submit', async e => { e.preventDefault(); const m = $('#msg-real'); const id = $('#r-petak').value, k = $('#r-keg').value;
+  if (!id) { m.className = 'msg err'; m.textContent = 'Pilih petak terlebih dahulu.'; return; }
+  const err = await addReal(k, id, $('#r-tgl').value || TODAY, $('#r-petugas').value.trim());
+  m.className = 'msg ' + (err ? 'err' : 'ok'); m.textContent = err || `${KEG[k]} petak ${id} tersimpan.`; if (!err) toast(`${KEG[k]} petak ${id} tersimpan`); });
+document.getElementById('p-tugas').addEventListener('click', async e => { const b = e.target.closest('button[data-done]'); if (!b) return;
+  b.disabled = true; const err = await addReal(b.dataset.done, b.dataset.id, TODAY, $('#petugas').value.trim()); const m = $('#msg-tugas');
+  m.className = 'msg ' + (err ? 'err' : 'ok'); m.textContent = err ? err : ''; if (!err) toast(`${KEG[b.dataset.done]} petak ${b.dataset.id} dicatat selesai`); });
+$('#pr-petak').addEventListener('change', updLhc);
+$('#f-prod').addEventListener('submit', async e => { e.preventDefault(); const m = $('#msg-prod'); const id = $('#pr-petak').value, v = parseFloat($('#pr-vol').value);
+  if (!id) { m.className = 'msg err'; m.textContent = 'Belum ada petak ditebang yang menunggu LHP.'; return; }
+  if (!(v > 0)) { m.className = 'msg err'; m.textContent = 'Isi volume ukur dalam m³.'; return; }
+  const p = byId[id], q = P[p.jenis], age = p.tanam_sebelumnya ? YEAR - p.tanam_sebelumnya : q.daur;
+  const {error} = await sb.from('produksi').insert({petak:id, no_lhp:$('#pr-no').value.trim(), tgl:$('#pr-tgl').value || TODAY, vol_lhc:Math.round(q.mai*age*L_(p)*q.fk), vol_ukur:Math.round(v)});
+  if (error) { m.className = 'msg err'; m.textContent = 'Gagal menyimpan: ' + error.message; return; }
+  await refresh(); m.className = 'msg ok'; m.textContent = `LHP petak ${id} tersimpan.`; toast(`LHP petak ${id} tersimpan`); });
+$('#f-angk').addEventListener('submit', async e => { e.preventDefault(); const m = $('#msg-angk'); const pid = $('#an-prod').value, v = parseFloat($('#an-vol').value);
+  const pr = PROD.find(x => String(x.id) === String(pid)); if (!pr) { m.className = 'msg err'; m.textContent = 'Tidak ada LHP dengan stok tersisa.'; return; }
+  const sisa = pr.vol_ukur - angkutOf(pr.id);
+  if (!(v > 0) || v > sisa) { m.className = 'msg err'; m.textContent = `Volume harus antara 1 dan ${fmt(sisa)} m³ (sisa stok LHP ini).`; return; }
+  const no = $('#an-no').value.trim();
+  const {error} = await sb.from('angkutan').insert({produksi_id:pr.id, no_dok:no, tgl:$('#an-tgl').value || TODAY, vol:Math.round(v), tujuan:$('#an-tuj').value});
+  if (error) { m.className = 'msg err'; m.textContent = 'Gagal menyimpan: ' + error.message; return; }
+  await refresh(); m.className = 'msg ok'; m.textContent = `Dokumen ${no} tersimpan dan dapat ditelusuri.`; toast(`Dokumen ${no} tersimpan`); });
+$('#f-trace').addEventListener('submit', e => { e.preventDefault(); trace($('#q').value); });
+document.getElementById('p-telusur').addEventListener('click', e => {
+  const t = e.target.closest('[data-trace]'); if (t) { $('#q').value = t.dataset.trace; trace(t.dataset.trace); $('#q').scrollIntoView({block:'center'}); }
+  const s = e.target.closest('[data-showmap]'); if (s) { const id = s.dataset.showmap; show('peta'); setTimeout(() => selectPetak(id, true), 60); }
+});
+$('#btn-geojson').addEventListener('click', () => {
+  const fc = {type:'FeatureCollection', features:D.petak.features.map(f => { const p = byId[f.properties.id]; return {type:'Feature', geometry:f.geometry, properties:{id:p.id, blok:p.blok, peruntukan:p.peruntukan, jenis:p.jenis, luas_ha:p.luas, tahun_tanam:p.tahun_tanam, status:p.peruntukan==='pokok'?status(p):p.peruntukan, umur:umur(p), volume_m3:Math.round(vol(p)), tutupan_2020:p.tutupan2020, eudr:eudr(p)}}; })};
+  const txt = JSON.stringify(fc);
+  const done = () => { const b = $('#btn-geojson'); b.textContent = 'GeoJSON tersalin'; setTimeout(() => b.textContent = 'Salin GeoJSON', 1800); };
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(done).catch(() => { $('#geo-out').hidden = false; $('#geo-text').value = txt; $('#geo-text').select(); });
+});
+const rerenderTheme = () => { renderPage(current); if (mapReady) refreshMap(); };
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerenderTheme); } catch(e) {}
+new MutationObserver(rerenderTheme).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+(async () => {
+  const {data:{session}} = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  try {
+    ME = await q(sb.from('profil').select('nama,peran').eq('user_id', session.user.id).single());
+    role = ME.peran in ROLES ? ME.peran : 'direksi';
+    $('#u-nama').textContent = ME.nama; $('#u-peran').textContent = ROLE_DESC[role][0];
+    await fetchAll(); rebuild();
+    $('#asof').innerHTML = `<b>RKT ${YEAR}</b> · data per ${fdate(TODAY)}`;
+    $('#dl-petak').innerHTML = D.petak.features.map(f => `<option value="${f.properties.id}">`).join('');
+    $('#nav-lapangan').hidden = !['mandor','manajer'].includes(role);
+    renderTugas();
+    const h = (location.hash || '').slice(1);
+    show(ROLES[role].pages.includes(h) ? h : ROLES[role].home);
+    $('#loading').hidden = true;
+    sb.channel('sim').on('postgres_changes', {event:'INSERT', schema:'public'}, () => { clearTimeout(window.__rt); window.__rt = setTimeout(refresh, 800); }).subscribe();
+  } catch (err) {
+    $('#loading').innerHTML = `<div style="max-width:440px;text-align:center;padding:16px">Gagal memuat data: ${esc(err.message || err)}<br><br><a class="btn" href="index.html">Kembali ke halaman masuk</a></div>`;
+  }
+})();
+</script>
+
+</body></html>

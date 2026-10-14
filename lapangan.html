@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Input Lapangan · SIM Rimba Selatan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="gaya.css">
+<style>
+.wrap{max-width:560px;margin-inline:auto;padding-block:16px 40px;padding-inline:16px;display:flex;flex-direction:column;gap:14px}
+.topbar a{color:var(--brand-ink);font-size:.9rem}
+#mini{height:240px;border-radius:var(--r);border:1px solid var(--line)}
+.gps{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.gps .big{font-family:var(--f-mono);font-size:.95rem}
+.petak-now{font-family:var(--f-display);font-size:1.6rem;font-weight:700}
+.tabs{display:grid;grid-template-columns:1fr 1fr}
+.tabs button{border:1px solid var(--line);background:var(--surface);padding:10px;font-weight:600;cursor:pointer;color:var(--muted)}
+.tabs button:first-child{border-radius:8px 0 0 8px}.tabs button:last-child{border-radius:0 8px 8px 0}
+.tabs button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+form{display:flex;flex-direction:column;gap:10px}
+textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;min-height:80px}
+#preview{max-width:100%;border-radius:var(--r);display:block}
+.big-btn{padding:14px;font-size:1rem}
+</style>
+</head><body>
+<header class="topbar"><div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><b>Input Lapangan</b><small id="who">…</small></span></div><span class="spacer"></span><a href="app.html">Buka SIM</a></header>
+<main class="wrap">
+  <section class="panel">
+    <div class="gps"><div><div class="eyebrow">Posisi saya</div><div class="big" id="pos">Belum ada lokasi</div><span class="note" id="acc"></span></div>
+      <button class="btn primary" type="button" id="btn-gps">Ambil lokasi GPS</button></div>
+    <div style="margin-top:10px" class="gps"><div><div class="eyebrow">Petak terdeteksi</div><div class="petak-now" id="petak-now">–</div><span class="note" id="petak-info">Ambil lokasi atau pilih petak di peta</span></div></div>
+    <div id="mini" style="margin-top:10px"></div>
+  </section>
+  <div class="tabs" role="group" aria-label="Jenis input"><button type="button" data-tab="kegiatan" aria-pressed="true">Catat kegiatan RKT</button><button type="button" data-tab="lapor" aria-pressed="false">Laporkan kejadian</button></div>
+  <section class="panel">
+    <form id="f">
+      <div class="field" id="w-keg"><label for="keg">Kegiatan</label><select id="keg"><option value="tebang">Tebang</option><option value="tanam">Tanam kembali</option><option value="pelihara">Pemeliharaan</option></select></div>
+      <div class="field" id="w-kat" hidden><label for="kat">Kategori</label><select id="kat"><option>Kebakaran</option><option>Hama/penyakit</option><option>Pembalakan liar</option><option>Perambahan</option><option>Tanaman</option><option>Satwa</option><option>Lainnya</option></select></div>
+      <div class="field" id="w-tkt" hidden><label for="tkt">Tingkat</label><select id="tkt"><option value="rendah">Rendah</option><option value="sedang" selected>Sedang</option><option value="tinggi">Tinggi</option><option value="kritis">Kritis</option></select></div>
+      <div class="field"><label for="ptk">Petak</label><select id="ptk"></select></div>
+      <div class="field"><label for="cat">Catatan</label><textarea id="cat" placeholder="Kondisi di lapangan"></textarea></div>
+      <div class="field"><label for="foto">Foto (opsional)</label><input id="foto" type="file" accept="image/*" capture="environment"></div>
+      <img id="preview" alt="" hidden>
+      <button class="btn primary big-btn" type="submit" id="kirim">Kirim ke basis data</button>
+      <p class="msg" id="msg"></p>
+    </form>
+  </section>
+  <p class="note" style="text-align:center">SIM Rimba Selatan · dibuat oleh M. Rizwan Fazeri · NIM 2410611210086 · Perencanaan Hutan A2</p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const sb = supabase.createClient(SIM_CONFIG.url, SIM_CONFIG.anonKey);
+const $ = s => document.querySelector(s);
+let ME, USER, PETAK = [], RKT = [], REAL = [], YEAR = 2026, tab = 'kegiatan', pos = null, map, me, layer, chosen = null;
+const KEG = {tebang:'Tebang', tanam:'Tanam kembali', pelihara:'Pemeliharaan'};
+function inside(pt, ring){ let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) c = !c; } return c; }
+function status(p){ if (p.peruntukan !== 'pokok') return p.peruntukan; if (p.tahun_tanam == null) return (p.tahun_tebang != null && YEAR > p.tahun_tebang + 1) ? 'terlambat' : 'kosong'; return 'tegakan'; }
+function setPetak(id){
+  chosen = id; const p = PETAK.find(x => x.id === id);
+  $('#petak-now').textContent = id || 'Di luar areal';
+  $('#petak-info').textContent = p ? `Blok ${p.blok} · ${p.jenis || p.peruntukan} · ${p.tahun_tanam ? 'tanam ' + p.tahun_tanam : 'belum ditanam'}` : 'Posisi tidak berada di petak mana pun';
+  if (id) $('#ptk').value = id;
+  layer && layer.setStyle(f => ({color:'#fff', weight: f.properties.id === id ? 3 : .7, fillColor: f.properties.id === id ? '#e08a45' : '#6fae4c', fillOpacity: f.properties.id === id ? .8 : .45}));
+}
+function fillPetak(){
+  let ids;
+  if (tab === 'kegiatan') {
+    const k = $('#keg').value, done = new Set(REAL.filter(r => r.kegiatan === k).map(r => r.petak));
+    ids = RKT.filter(r => r.kegiatan === k && !done.has(r.petak)).map(r => r.petak);
+    if (k === 'tanam') ids = ids.filter(id => ['kosong','terlambat'].includes(status(PETAK.find(p => p.id === id))));
+    if (k === 'tebang') ids = ids.filter(id => PETAK.find(p => p.id === id).tahun_tanam != null);
+  } else ids = PETAK.map(p => p.id);
+  $('#ptk').innerHTML = ids.length ? ids.map(id => `<option>${id}</option>`).join('') : '<option value="">Tidak ada petak tersisa untuk kegiatan ini</option>';
+  if (chosen && ids.includes(chosen)) $('#ptk').value = chosen;
+}
+async function load(){
+  const [pg, pt, rk, re] = await Promise.all([sb.from('pengaturan').select('*').single(), sb.from('v_web_petak').select('id,blok,peruntukan,jenis,tahun_tanam,tahun_tebang,luas_efektif_ha,luas_ha,geojson'), sb.from('rkt').select('*'), sb.from('realisasi').select('petak,kegiatan')]);
+  YEAR = pg.data.tahun_berjalan; PETAK = pt.data; RKT = rk.data.filter(r => r.tahun === YEAR); REAL = re.data;
+  if (!map) {
+    map = L.map('mini', {zoomControl:false, attributionControl:false});
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19}).addTo(map);
+    layer = L.geoJSON({type:'FeatureCollection', features: PETAK.map(p => ({type:'Feature', properties:{id:p.id}, geometry:p.geojson}))}, {onEachFeature:(f, l) => l.on('click', () => setPetak(f.properties.id))}).addTo(map);
+    map.fitBounds(layer.getBounds());
+  }
+  setPetak(chosen); fillPetak();
+}
+$('#btn-gps').addEventListener('click', () => {
+  if (!navigator.geolocation) { $('#pos').textContent = 'Perangkat tidak mendukung GPS'; return; }
+  $('#pos').textContent = 'Mencari lokasi…';
+  navigator.geolocation.getCurrentPosition(g => {
+    pos = {lat:g.coords.latitude, lon:g.coords.longitude, acc:g.coords.accuracy};
+    $('#pos').textContent = `${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}`; $('#acc').textContent = `akurasi ±${Math.round(pos.acc)} m`;
+    me ? me.setLatLng([pos.lat, pos.lon]) : (me = L.circleMarker([pos.lat, pos.lon], {radius:8, color:'#fff', weight:3, fillColor:'#2f7fb0', fillOpacity:1}).addTo(map));
+    const hit = PETAK.find(p => inside([pos.lon, pos.lat], p.geojson.coordinates[0]));
+    setPetak(hit ? hit.id : null); if (hit) map.setView([pos.lat, pos.lon], 15); else map.setView([pos.lat, pos.lon], 12);
+  }, err => { $('#pos').textContent = 'Lokasi tidak didapat: ' + (err.code === 1 ? 'izin lokasi ditolak' : 'sinyal lemah, coba lagi di tempat terbuka'); }, {enableHighAccuracy:true, timeout:20000});
+});
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; tab = b.dataset.tab;
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  $('#w-keg').hidden = tab !== 'kegiatan'; $('#w-kat').hidden = tab === 'kegiatan'; $('#w-tkt').hidden = tab === 'kegiatan'; fillPetak(); });
+$('#keg').addEventListener('change', fillPetak);
+$('#ptk').addEventListener('change', e => setPetak(e.target.value));
+$('#foto').addEventListener('change', () => { const f = $('#foto').files[0]; if (!f) { $('#preview').hidden = true; return; } $('#preview').src = URL.createObjectURL(f); $('#preview').hidden = false; });
+async function shrink(file){
+  const img = await createImageBitmap(file), s = Math.min(1, 1280 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
+}
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault(); const m = $('#msg'), id = $('#ptk').value;
+  if (!id) { m.className = 'msg err'; m.textContent = 'Pilih petak terlebih dahulu.'; return; }
+  $('#kirim').disabled = true; m.className = 'msg'; m.textContent = 'Mengirim…';
+  try {
+    let foto_path = null; const f = $('#foto').files[0];
+    if (f) { const blob = await shrink(f); foto_path = `${USER.id}/${Date.now()}.jpg`; const up = await sb.storage.from('foto-lapangan').upload(foto_path, blob, {contentType:'image/jpeg'}); if (up.error) throw up.error; }
+    const today = new Date(); const tgl = today.toISOString().slice(0, 10);
+    const base = {petak:id, lat:pos ? pos.lat : null, lon:pos ? pos.lon : null, foto_path};
+    const res = tab === 'kegiatan'
+      ? await sb.from('realisasi').insert({...base, kegiatan:$('#keg').value, tanggal:tgl, petugas:ME.nama, catatan:$('#cat').value.trim() || null, luas_ha:(PETAK.find(p => p.id === id).luas_efektif_ha ?? 50)})
+      : await sb.from('laporan_lapangan').insert({...base, kategori:$('#kat').value, tingkat:$('#tkt').value, catatan:$('#cat').value.trim() || null, nama_pelapor:ME.nama});
+    if (res.error) throw res.error;
+    m.className = 'msg ok'; m.textContent = tab === 'kegiatan' ? `${KEG[$('#keg').value]} petak ${id} tercatat. Status petak di SIM dan QGIS ikut berubah.` : `Laporan ${$('#kat').value.toLowerCase()} di petak ${id} terkirim.`;
+    $('#cat').value = ''; $('#foto').value = ''; $('#preview').hidden = true; await load();
+  } catch (err) { m.className = 'msg err'; m.textContent = 'Gagal mengirim: ' + (err.message || err); }
+  $('#kirim').disabled = false;
+});
+(async () => {
+  const {data:{session}} = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  USER = session.user;
+  ME = (await sb.from('profil').select('nama,peran').eq('user_id', USER.id).single()).data;
+  $('#who').textContent = ME.nama;
+  if (!['mandor','manajer'].includes(ME.peran)) { document.querySelector('.tabs button[data-tab="kegiatan"]').disabled = true; document.querySelector('.tabs button[data-tab="lapor"]').click(); }
+  await load();
+})();
+</script>
+</body></html>

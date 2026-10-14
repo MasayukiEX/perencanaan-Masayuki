@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SIM Rimba Selatan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="gaya.css">
+<style>
+body{min-height:100%;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+.hero{background:var(--brand);color:var(--brand-ink);padding-block:48px;padding-inline:48px;display:flex;flex-direction:column;justify-content:space-between;gap:32px;position:relative;overflow:hidden}
+.hero h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.05;max-width:16ch}
+.hero p{color:var(--brand-muted);max-width:52ch;font-size:1.02rem}
+.grid-art{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;max-width:520px;opacity:.95}
+.grid-art i{aspect-ratio:1;border-radius:2px;background:#6fae4c}
+.facts{display:flex;gap:28px;flex-wrap:wrap}
+.facts b{font-family:var(--f-display);font-size:1.6rem;display:block;color:#f0b07a}
+.facts span{color:var(--brand-muted);font-size:.85rem}
+.side{padding-block:48px;padding-inline:40px;display:flex;flex-direction:column;justify-content:center;gap:22px;max-width:520px;width:100%;margin-inline:auto}
+.side h2{font-size:1.6rem}
+.roles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.roles button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.roles button:hover{border-color:var(--accent);background:var(--surface-2)}
+.roles b{font-size:.98rem}.roles span{font-size:.8rem;color:var(--muted)}
+.credit{margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:.9rem;color:var(--muted)}.credit b{color:var(--ink)}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.8rem}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+form{display:flex;flex-direction:column;gap:10px}
+@media (max-width:860px){body{grid-template-columns:minmax(0,1fr)}.hero{padding-inline:20px;padding-block:28px}.side{padding-inline:16px;padding-block:28px}.grid-art{display:none}}
+</style>
+</head><body>
+<section class="hero">
+  <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><b>SIM Rimba Selatan</b><small>PT Rimba Selatan Lestari (fiktif) · PBPH Hutan Tanaman</small></span></div>
+  <div>
+    <h1>Perencanaan dan ketelusuran hutan tanaman dalam satu basis data</h1>
+    <p>Etat, RKT, realisasi lapangan, dan asal-usul kayu terhubung ke setiap petak. Peta petak tersambung langsung ke QGIS untuk analisis tata hutan.</p>
+  </div>
+  <div class="grid-art" id="art" aria-hidden="true"></div>
+  <div class="facts"><div><b>M. Rizwan Fazeri</b><span>pembuat · NIM 2410611210086</span></div><div><b>10.000 ha</b><span>areal PBPH, 200 petak</span></div><div><b>THPB</b><span>sistem silvikultur</span></div><div><b>PostGIS + QGIS</b><span>data spasial bersama</span></div></div>
+</section>
+<main class="side">
+  <div><div class="eyebrow">Tugas Perencanaan Hutan</div><h2>Masuk ke sistem</h2><p class="note">Pilih akun demo sesuai peran untuk melihat tampilan tiap level manajemen.</p></div>
+  <div class="roles" id="roles">
+    <button type="button" data-email="direksi@demo-rimbaselatan.id"><b>Direksi</b><span>Strategis · ringkasan &amp; laporan</span></button>
+    <button type="button" data-email="manajer@demo-rimbaselatan.id"><b>Manajer perencanaan</b><span>Taktis · etat, RKT, semua data</span></button>
+    <button type="button" data-email="mandor@demo-rimbaselatan.id"><b>Mandor</b><span>Operasional · tugas &amp; input lapangan</span></button>
+    <button type="button" data-email="tpk@demo-rimbaselatan.id"><b>Staf TPK</b><span>Operasional · LHP &amp; angkutan</span></button>
+  </div>
+  <div class="or">atau masuk dengan email</div>
+  <form id="f">
+    <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="pw">Kata sandi</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <button class="btn primary" type="submit" id="go">Masuk</button>
+  </form>
+  <p class="msg" id="msg"></p>
+  <p class="credit">Dibuat oleh <b>M. Rizwan Fazeri</b> · NIM <span class="mono">2410611210086</span><br>Tugas Mata Kuliah Perencanaan Hutan A2</p>
+  <p class="note">Kata sandi semua akun demo: <span class="mono">RimbaSelatan2026</span>. Data bersifat contoh dan dapat diubah siapa pun yang masuk.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const art = document.getElementById('art'), cols = ['#6fae4c','#6fae4c','#6fae4c','#3aa39e','#3aa39e','#e08a45','#a3c98d','#2f5a3a','#86b7d1'];
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+art.innerHTML = Array.from({length:200}, () => `<i style="background:${cols[Math.floor(rnd()*cols.length)]}"></i>`).join('');
+const sb = supabase.createClient(SIM_CONFIG.url, SIM_CONFIG.anonKey);
+const msg = document.getElementById('msg');
+sb.auth.getSession().then(({data}) => { if (data.session) location.href = 'app.html'; });
+async function login(email, pw){
+  msg.className = 'msg'; msg.textContent = 'Memeriksa akun…';
+  const {error} = await sb.auth.signInWithPassword({email, password: pw});
+  if (error) { msg.className = 'msg err'; msg.textContent = error.message === 'Invalid login credentials' ? 'Email atau kata sandi salah.' : 'Gagal masuk: ' + error.message; return; }
+  location.href = 'app.html';
+}
+document.getElementById('roles').addEventListener('click', e => { const b = e.target.closest('button[data-email]'); if (b) login(b.dataset.email, 'RimbaSelatan2026'); });
+document.getElementById('f').addEventListener('submit', e => { e.preventDefault(); login(document.getElementById('email').value.trim(), document.getElementById('pw').value); });
+</script>
+</body></html>

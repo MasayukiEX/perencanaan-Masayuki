@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Laporan · SIM Rimba Selatan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="gaya.css">
+<style>
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:end;padding-block:14px;padding-inline:20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.sheet{max-width:900px;margin:24px auto;background:#fff;color:#16241b;padding:40px 48px;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+.kop{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px double #1c3a29;padding-bottom:10px;margin-bottom:18px;gap:16px}
+.kop b{font-family:var(--f-display);font-size:1.4rem;color:#1c3a29;display:block}
+.kop small{color:#5a6a60}
+.sheet h1{font-size:1.5rem;text-align:center;margin:6px 0 2px}
+.sheet .sub{text-align:center;color:#5a6a60;margin:0 0 18px}
+.sheet table{font-size:.82rem;margin-bottom:16px}
+.sheet th{color:#16241b;background:#eef2ec;border-bottom:1px solid #b9c4bb}
+.sheet td,.sheet th{border-bottom:1px solid #d6ddd6;padding:5px 8px}
+.sheet h3{margin:18px 0 8px;font-size:1.05rem}
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.sum div{border:1px solid #d6ddd6;border-radius:6px;padding:8px 10px}.sum b{display:block;font-family:var(--f-display);font-size:1.3rem}
+.ttd{display:flex;justify-content:flex-end;margin-top:36px}.ttd div{text-align:center;min-width:220px}.ttd .line{margin-top:64px;border-top:1px solid #16241b;padding-top:4px}
+.note-print{font-size:.75rem;color:#5a6a60;margin-top:20px}
+@media print{.ctl{display:none}body{background:#fff}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{size:A4;margin:16mm}}
+@media (max-width:760px){.sheet{padding:20px 16px;margin:12px}.sum{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head><body>
+<div class="ctl">
+  <div class="field"><label for="jenis">Jenis laporan</label><select id="jenis"><option value="rkt">Realisasi RKT</option><option value="produksi">Produksi dan angkutan kayu</option><option value="tata">Hasil tata hutan per petak</option><option value="bukti">Bukti asal-usul kayu</option></select></div>
+  <div class="field" id="w-dok" hidden><label for="dok">No. dokumen angkutan</label><input id="dok" list="dl" placeholder="SKSHHK-RSL-2026-0001"></div>
+  <button class="btn primary" type="button" id="cetak">Cetak / simpan PDF</button>
+  <a class="btn" href="app.html">Kembali ke SIM</a>
+</div>
+<datalist id="dl"></datalist>
+<article class="sheet" id="sheet"><p>Memuat data…</p></article>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const sb = supabase.createClient(SIM_CONFIG.url, SIM_CONFIG.anonKey);
+const $ = s => document.querySelector(s);
+const fmt = (n, d=0) => Number(n || 0).toLocaleString('id-ID', {minimumFractionDigits:d, maximumFractionDigits:d});
+const BUL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const fd = s => { const [y,m,d] = String(s).slice(0,10).split('-'); return `${+d} ${BUL[+m-1]} ${y}`; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KEG = {tebang:'Tebang', tanam:'Tanam kembali', pelihara:'Pemeliharaan'}, JN = {AK:'Akasia', EU:'Eukaliptus', MR:'Meranti', KR:'Karet/MPTS'};
+let S = {};
+const kop = (judul, sub) => `<div class="kop"><div><b>PT RIMBA SELATAN LESTARI</b><small>PBPH Hutan Tanaman · Kabupaten Tanah Laut, Kalimantan Selatan (perusahaan fiktif, data contoh)</small></div><small>Dicetak dari SIM Rimba Selatan<br>${fd(new Date().toISOString())}</small></div><h1>${judul}</h1><p class="sub">${sub}</p>`;
+const ttd = () => `<div class="ttd"><div>Tanah Laut, ${fd(S.pg.tanggal_data)}<br>Manajer Perencanaan<div class="line">${esc(S.manajer || '..............................')}</div></div></div><p class="note-print">SIM Rimba Selatan dibuat oleh M. Rizwan Fazeri · NIM 2410611210086 · Perencanaan Hutan A2.</p>`;
+function rkt(){
+  const Y = S.pg.tahun_berjalan, done = (k, id) => S.re.some(r => r.kegiatan === k && r.petak === id), P = Object.fromEntries(S.pt.map(p => [p.id, p]));
+  const rows = S.rk.filter(r => r.tahun === Y).sort((a,b) => (a.kegiatan + a.petak).localeCompare(b.kegiatan + b.petak));
+  const by = k => rows.filter(r => r.kegiatan === k);
+  const sums = ['tebang','tanam','pelihara'].map(k => { const t = by(k), d = t.filter(r => done(k, r.petak)); return `<div><span>${KEG[k]}</span><b>${d.length}/${t.length} petak</b><span>${fmt(t.length ? d.length/t.length*100 : 0)}%</span></div>`; }).join('');
+  const vol = S.pr.reduce((a,x) => a + +x.vol_ukur, 0);
+  return kop(`Laporan Realisasi RKT ${Y}`, `Keadaan per ${fd(S.pg.tanggal_data)} · sistem silvikultur THPB`) + `<div class="sum">${sums}<div><span>Produksi (LHP)</span><b>${fmt(vol)} m³</b></div></div>` +
+    ['tebang','tanam','pelihara'].map(k => `<h3>${KEG[k]}</h3><table><thead><tr><th>Petak</th><th>Blok</th><th>Jenis</th><th style="text-align:right">Luas efektif (ha)</th><th>Status</th><th>Tanggal realisasi</th><th>Petugas</th></tr></thead><tbody>${by(k).map(r => { const p = P[r.petak], re = S.re.find(x => x.kegiatan === k && x.petak === r.petak); return `<tr><td class="mono">${r.petak}</td><td>${p.blok}</td><td>${JN[p.jenis] || '-'}</td><td style="text-align:right">${fmt(p.luas_efektif_ha ?? p.luas_ha, 1)}</td><td>${re ? 'Selesai' : 'Belum'}</td><td>${re ? fd(re.tanggal) : '–'}</td><td>${esc(re ? re.petugas : '')}</td></tr>`; }).join('')}</tbody></table>`).join('') + ttd();
+}
+function produksi(){
+  const ang = id => S.an.filter(a => a.produksi_id === id);
+  const tv = S.pr.reduce((a,x) => a + +x.vol_ukur, 0), ta = S.an.reduce((a,x) => a + +x.vol, 0);
+  return kop('Rekapitulasi Produksi dan Peredaran Kayu', `Tahun ${S.pg.tahun_berjalan} · dasar: LHP dan dokumen angkutan`) +
+    `<div class="sum"><div><span>Jumlah LHP</span><b>${S.pr.length}</b></div><div><span>Volume ukur</span><b>${fmt(tv)} m³</b></div><div><span>Diangkut</span><b>${fmt(ta)} m³</b></div><div><span>Stok di TPK</span><b>${fmt(tv - ta)} m³</b></div></div>` +
+    `<table><thead><tr><th>No. LHP</th><th>Petak</th><th>Tgl tebang</th><th style="text-align:right">LHC (m³)</th><th style="text-align:right">Ukur (m³)</th><th style="text-align:right">Diangkut (m³)</th><th style="text-align:right">Dokumen</th></tr></thead><tbody>${S.pr.map(x => { const a = ang(x.id); return `<tr><td class="mono">${x.no_lhp}</td><td class="mono">${x.petak}</td><td>${fd(x.tgl)}</td><td style="text-align:right">${fmt(x.vol_lhc)}</td><td style="text-align:right">${fmt(x.vol_ukur)}</td><td style="text-align:right">${fmt(a.reduce((s,y)=>s+ +y.vol,0))}</td><td style="text-align:right">${a.length}</td></tr>`; }).join('')}</tbody></table>` + ttd();
+}
+function tata(){
+  const pk = S.pt.filter(p => p.peruntukan === 'pokok'), br = pk.reduce((a,p)=>a+ +p.luas_ha,0), ef = pk.reduce((a,p)=>a+ +(p.luas_efektif_ha ?? p.luas_ha),0);
+  return kop('Hasil Tata Hutan Berbasis Analisis Spasial', 'Kawasan lindung dari DEM Copernicus 30 m di QGIS: lereng ≥ 40%, sempadan anak sungai 50 m, sungai besar 100 m (Keppres 32/1990)') +
+    `<div class="sum"><div><span>Tanaman pokok bruto</span><b>${fmt(br)} ha</b></div><div><span>Luas efektif</span><b>${fmt(ef)} ha</b></div><div><span>Menjadi lindung</span><b>${fmt((1-ef/br)*100,1)}%</b></div><div><span>Petak &gt; 50% lindung</span><b>${pk.filter(p=>+p.pct_lindung>50).length}</b></div></div>` +
+    `<table><thead><tr><th>Petak</th><th>Blok</th><th>Peruntukan</th><th>Jenis</th><th style="text-align:right">Lindung (%)</th><th style="text-align:right">Efektif (ha)</th><th style="text-align:right">Lereng rata (%)</th><th style="text-align:right">Elevasi (m)</th><th>Rekomendasi</th></tr></thead><tbody>${S.pt.map(p => `<tr><td class="mono">${p.id}</td><td>${p.blok}</td><td>${p.peruntukan}</td><td>${JN[p.jenis] || '-'}</td><td style="text-align:right">${fmt(p.pct_lindung,1)}</td><td style="text-align:right">${fmt(p.luas_efektif_ha,1)}</td><td style="text-align:right">${fmt(p.lereng_rata_pct,1)}</td><td style="text-align:right">${fmt(p.elevasi_rata_m)}</td><td>${p.peruntukan === 'pokok' && +p.pct_lindung > 50 ? 'Usul alih fungsi lindung' : p.peruntukan === 'pokok' && +p.pct_lindung > 25 ? 'Produksi terbatas' : ''}</td></tr>`).join('')}</tbody></table>` + ttd();
+}
+function bukti(){
+  const no = $('#dok').value.trim().toUpperCase(); if (!no) return kop('Bukti Asal-Usul Kayu', 'Masukkan nomor dokumen angkutan di atas') ;
+  const a = S.an.find(x => x.no_dok.toUpperCase() === no); if (!a) return kop('Bukti Asal-Usul Kayu', `Dokumen ${esc(no)} tidak ditemukan`);
+  const x = S.pr.find(y => y.id === a.produksi_id), p = S.pt.find(y => y.id === x.petak);
+  const eudr = p.tutupan_2020 && p.tutupan_2020.startsWith('Hutan alam') ? 'TIDAK MEMENUHI: areal dibuka dari hutan alam setelah 31 Desember 2020' : 'MEMENUHI: bukan hutan alam per 31 Desember 2020; koordinat petak tercatat';
+  const row = (k, v) => `<tr><th style="width:38%;text-transform:none;letter-spacing:0;font-size:.85rem">${k}</th><td>${v}</td></tr>`;
+  return kop('Bukti Asal-Usul Kayu (Ketelusuran)', `Dokumen angkutan ${esc(a.no_dok)}`) +
+    `<h3>1. Dokumen angkutan</h3><table>${row('Nomor', a.no_dok)}${row('Tanggal', fd(a.tgl))}${row('Volume', fmt(a.vol) + ' m³')}${row('Tujuan', esc(a.tujuan))}</table>
+     <h3>2. Laporan hasil produksi</h3><table>${row('Nomor LHP', x.no_lhp)}${row('Tanggal tebang', fd(x.tgl))}${row('Volume LHC / ukur', fmt(x.vol_lhc) + ' / ' + fmt(x.vol_ukur) + ' m³')}</table>
+     <h3>3. Petak asal</h3><table>${row('Petak / blok', p.id + ' / Blok ' + p.blok)}${row('Jenis', JN[p.jenis] || '-')}${row('Rotasi yang ditebang (tahun tanam)', p.tanam_sebelumnya ?? p.tahun_tanam ?? '-')}${row('Koordinat pusat petak', p.lat + ', ' + p.lon)}${row('Luas petak / efektif', fmt(p.luas_ha) + ' / ' + fmt(p.luas_efektif_ha,1) + ' ha')}${row('Tutupan lahan per 31 Desember 2020', esc(p.tutupan_2020))}${row('Status ketelusuran EUDR', '<b>' + eudr + '</b>')}</table>
+     <p class="note-print">Batas poligon petak tersedia dalam basis data PostGIS (tabel petak) dan dapat diekspor sebagai GeoJSON untuk lampiran uji tuntas.</p>` + ttd();
+}
+function render(){ $('#w-dok').hidden = $('#jenis').value !== 'bukti'; $('#sheet').innerHTML = ({rkt, produksi, tata, bukti})[$('#jenis').value](); }
+$('#jenis').addEventListener('change', render); $('#dok').addEventListener('change', render);
+$('#cetak').addEventListener('click', () => window.print());
+(async () => {
+  const {data:{session}} = await sb.auth.getSession(); if (!session) { location.href = 'index.html'; return; }
+  const g = t => t.then(r => { if (r.error) throw r.error; return r.data; });
+  const [pg, pt, rk, re, pr, an, mj] = await Promise.all([g(sb.from('pengaturan').select('*').single()), g(sb.from('v_web_petak').select('*').order('id')), g(sb.from('rkt').select('*')), g(sb.from('realisasi').select('*')), g(sb.from('produksi').select('*').order('tgl')), g(sb.from('angkutan').select('*').order('tgl')), g(sb.from('profil').select('nama').eq('peran','manajer').limit(1))]);
+  S = {pg, pt, rk, re, pr, an, manajer: mj[0] ? mj[0].nama.replace(/\s*\(.*\)$/, '') : ''};
+  $('#dl').innerHTML = an.map(a => `<option value="${a.no_dok}">`).join('');
+  const h = location.hash.slice(1); if (['rkt','produksi','tata','bukti'].includes(h)) $('#jenis').value = h;
+  render();
+})();
+</script>
+</body></html>
